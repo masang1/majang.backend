@@ -2,12 +2,12 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import './prototype';
 
 declare const module: any;
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
     forbidNonWhitelisted: true,
@@ -32,5 +32,3 @@ async function bootstrap() {
 }
 
 bootstrap();
-
-// npm install --save @nestjs/typeorm typeorm mysql2

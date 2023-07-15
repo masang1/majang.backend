@@ -4,10 +4,12 @@ import { AuthService } from './auth.service';
 import { RedisModule } from '@liaoliaots/nestjs-redis';
 import { AuthCodeConfig, SessionConfig } from 'config/interface';
 import { SmsService } from './sms.service';
+import { UserModule } from 'src/user/user.module';
 
 @Module({
   imports: [
     ConfigModule,
+    UserModule,
     RedisModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

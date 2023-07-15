@@ -10,6 +10,7 @@ export interface AuthCodeConfig {
     length: number
     expire: number
     redisUrl: string
+    messageFormat: string
 }
 
 export interface SessionConfig {
