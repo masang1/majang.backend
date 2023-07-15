@@ -1,15 +1,16 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { RedisModule } from '@liaoliaots/nestjs-redis';
 import { AuthCodeConfig, SessionConfig } from 'config/interface';
 import { SmsService } from './sms.service';
+import { SessionService } from './session.service';
 import { UserModule } from 'src/user/user.module';
 
 @Module({
   imports: [
     ConfigModule,
-    UserModule,
+    forwardRef(() => UserModule),
     RedisModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -30,6 +31,11 @@ import { UserModule } from 'src/user/user.module';
   ],
   providers: [
     SmsService,
+    SessionService,
+    AuthService
+  ],
+  exports: [
+    SessionService,
     AuthService
   ]
 })

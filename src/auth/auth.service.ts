@@ -1,11 +1,14 @@
 import { InjectRedis } from '@liaoliaots/nestjs-redis';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import Redis from 'ioredis';
 import { SmsService } from './sms.service';
 import { CreateSessionDto, CreateSessionResponseDto } from './auth.dto';
 import { UserService } from 'src/user/user.service';
 import { ConfigService } from '@nestjs/config';
 import { AuthCodeConfig } from 'config/interface';
+import { SessionService } from './session.service';
+import { SessionToken } from './session';
+import { User } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -15,10 +18,9 @@ export class AuthService {
         private readonly configService: ConfigService,
         private readonly userService: UserService,
         private readonly smsService: SmsService,
+        private readonly sessionService: SessionService,
         @InjectRedis('authCode')
         private readonly authCodeRedis: Redis,
-        @InjectRedis('session')
-        private readonly sessionRedis: Redis,
     ) { }
 
     /**
@@ -60,10 +62,14 @@ export class AuthService {
         return result
     }
 
+    /**
+     * 세션을 생성합니다.
+     * @param data 사용자 정보
+     */
     async createSession(data: CreateSessionDto): Promise<CreateSessionResponseDto> {
         // 인증코드가 존재하지 않으면 휴대폰 번호로 인증코드를 발송합니다.
 
-        if (data.code) {
+        if (!data.code) {
             try {
                 await this.sendAuthCode(data.phone)
             } catch {
@@ -75,17 +81,47 @@ export class AuthService {
         }
 
         // 인증코드를 검증합니다.
-        if (!(await this.validateAuthCode(data.phone, data.code)))
+        if (!(await this.validateAuthCode(data.phone, data.code))) {
             // 잘못된 인증코드
             return { code: 'invalid_code' }
+        }
 
         // 사용자 가져오기
-        const user = this.userService.findByPhone(data.phone)
+        let user = await this.userService.findByPhone(data.phone)
 
-        if (!user && !data.force)
-            // 사용자 생성이 불가능할 때.
-            return { code: 'user_notfound' }
+        if (!user) {
+            if (!data.force) {
+                // 사용자 생성이 불가능할 때.
+                return { code: 'user_notfound' }
+            }
 
+            // 사용자 생성
+            user = await this.userService.create(data.phone)
+        }
 
+        // 사용자가 차단되었는지 확인합니다.
+        if (user.deletedAt) {
+            return { code: 'blocked' }
+        }
+
+        // 세션 생성
+        return {
+            code: "authorized",
+            token: (await this.sessionService.create(user.id)).token
+        }
+    }
+
+    /**
+     * 사용자 세션을 검증합니다.
+     * @param token 세션 토큰
+     */
+    async validate(token: SessionToken | string): Promise<User | null> {
+        token = await this.sessionService.validate(token)
+
+        if (!token) {
+            return null
+        }
+
+        return await this.userService.findById(token.identifier)
     }
 }

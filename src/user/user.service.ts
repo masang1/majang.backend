@@ -43,4 +43,11 @@ export class UserService {
     async findByPhone(phone: string): Promise<User | null> {
         return this.prisma.user.findUnique({ where: { phone } });
     }
+
+    /**
+     * id로 사용자를 찾습니다.
+     */
+    async findById(id: number): Promise<User | null> {
+        return this.prisma.user.findUnique({ where: { id } });
+    }
 }
