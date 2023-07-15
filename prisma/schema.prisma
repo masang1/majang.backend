@@ -8,18 +8,196 @@ datasource db {
 }
 
 model User {
-  id        Int       @id @default(autoincrement())
-  nickname  String    @unique
-  phone     String    @unique
-  picture   String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  id               Int               @id @default(autoincrement())
+  nickname         String            @unique
+  // 사용자 닉네임
+  phone            String            @unique
+  // 사용자 전화번호
+  picture          String?           @db.VarChar(100)
+  // 사용자 프로필 사진
+  createdAt        DateTime          @default(now())
+  // 사용자 생성 시간
+  updatedAt        DateTime          @updatedAt
+  // 프로필 마지막 수정 시간
+  deletedAt        DateTime?
+  // 사용자 삭제 시간 (존재할 시 없는 사용자로 취급)
+  ItemInteractions ItemInteraction[]
+  // 상호작용 (조회, 좋아요, 채팅)
+  ItemBids         ItemBid[]
+  // 입찰
+  Posts            Post[]
+  // 게시글
 }
 
-model Item {
-  id         Int    @id @default(autoincrement())
-  name       String
-  price      Int
-  uploaderId Int
+enum ItemType {
+  SELL
+  BUY
+  AUCTION
+}
+
+enum ItemStatus {
+  DEFAULT
+  RESERVED
+  DONE
+  CANCELED
+}
+
+enum SellMethod {
+  DIRECT
+  DELIVERY
+  ALL
+}
+
+model Post {
+  id               Int               @id @default(autoincrement())
+  userId           Int
+  // 게시글 작성자 ID
+  user             User              @relation(fields: [userId], references: [id])
+  // 게시글 작성자
+  type             ItemType
+  // 게시글 종류 (판매, 구매, 경매)
+  status           ItemStatus        @default(DEFAULT)
+  // 게시글 상태 (기본, 예약됨, 거래완료, 취소됨)
+  ItemMetadata     ItemMetadata[]
+  // 메타데이터 (키-값 쌍)
+  ItemCategory     ItemCategory?     @relation(fields: [itemCategoryId], references: [id])
+  // 카테고리
+  itemCategoryId   Int?
+  // 카테고리 ID
+  ItemImage        ItemImage[]
+  // 이미지
+  title            String            @db.VarChar(100)
+  // 게시글 제목
+  content          String            @db.VarChar(5000)
+  // 게시글 상세 설명 (내용)
+  price            Int?
+  // 가격 (NULL일 시 가격제시)
+  shippingIncluded Boolean           @default(true)
+  // 배송비 포함 여부
+  condition        Int?
+  // 상품 상태 (NULL일 시 상태없음)
+  auctionUntil     DateTime?
+  // 경매 마감 시간 (NULL일 시 경매 게시글 아님)
+  location         String?           @db.VarChar(30)
+  // 거래 가능 위치
+  sellMethod       SellMethod
+  // 거래 방식 (직거래, 택배, 둘 다)
+  interactions     ItemInteraction[]
+  // 상호작용 (조회, 좋아요, 채팅)
+  ItemBid          ItemBid[]
+  // 입찰
+  createdAt        DateTime          @default(now())
+  // 게시글 작성 시간
+  updatedAt        DateTime          @updatedAt
+  // 게시글 마지막 수정 시간
+  deletedAt        DateTime?
+  // 글 삭제 시간 (존재할 시 삭제된 게시글로 취급)
+}
+
+enum InteractionType {
+  VIEW
+  LIKE
+  CHAT
+}
+
+model ItemInteraction {
+  id        Int             @id @default(autoincrement())
+  itemId    Int
+  // 상호작용한 게시글 ID
+  item      Post            @relation(fields: [itemId], references: [id])
+  // 상호작용한 게시글
+  userId    Int
+  // 상호작용한 유저 ID
+  user      User            @relation(fields: [userId], references: [id])
+  // 상호작용한 유저
+  type      InteractionType
+  // 상호작용 종류 (조회, 좋아요, 채팅)
+  createdAt DateTime        @default(now())
+  // 상호작용 시간
+}
+
+enum PresetType {
+  KEY
+  VALUE
+}
+
+model ItemMetadataPreset {
+  id                Int            @id @default(autoincrement())
+  type              PresetType
+  // 프리셋 종류 (키, 값)
+  isCreatedBySystem Boolean        @default(false)
+  // 시스템에 의해 생성된 프리셋인지 여부
+  content           String         @db.VarChar(100)
+  // 프리셋 내용
+  createdAt         DateTime       @default(now())
+  // 프리셋 생성 시간
+  keyMeta           ItemMetadata[] @relation("ItemMetadataPresetKey")
+  // 이 프리셋을 키로 사용하는 메타데이터
+  valueMeta         ItemMetadata[] @relation("ItemMetadataPresetValue")
+  // 이 프리셋을 값으로 사용하는 메타데이터
+}
+
+model ItemMetadata {
+  id        Int                @id @default(autoincrement())
+  itemId    Int
+  // 메타데이터가 속한 게시글 ID
+  item      Post               @relation(fields: [itemId], references: [id])
+  // 메타데이터가 속한 게시글
+  keyId     Int
+  // 메타데이터 프리셋 키 ID
+  key       ItemMetadataPreset @relation("ItemMetadataPresetKey", fields: [keyId], references: [id])
+  // 메타데이터 프리셋 키
+  valueId   Int
+  // 메타데이터 프리셋 값 ID
+  value     ItemMetadataPreset @relation("ItemMetadataPresetValue", fields: [valueId], references: [id])
+  // 메타데이터 프리셋 값
+  content   String             @db.VarChar(100)
+  // 메타데이터 내용
+  createdAt DateTime           @default(now())
+  // 메타데이터 생성 시간
+}
+
+model ItemCategory {
+  id        Int            @id @default(autoincrement())
+  name      String         @unique @db.VarChar(100)
+  // 카테고리 이름
+  parent    ItemCategory?  @relation("ItemCategoryParent", fields: [parentId], references: [id])
+  // 상위 카테고리
+  parentId  Int?
+  // 상위 카테고리 ID
+  children  ItemCategory[] @relation("ItemCategoryParent")
+  // 하위 카테고리
+  items     Post[]
+  // 이 카테고리에 속한 게시글
+  createdAt DateTime       @default(now())
+  // 카테고리 생성 시간
+}
+
+model ItemImage {
+  imageId   Int      @id @unique
+  // 이미지 ID (AWS S3)
+  itemId    Int
+  // 이미지가 속한 게시글 ID
+  item      Post     @relation(fields: [itemId], references: [id])
+  // 이미지가 속한 게시글
+  createdAt DateTime @default(now())
+  // 이미지 생성 시간
+}
+
+model ItemBid {
+  id        Int      @id @default(autoincrement())
+  itemId    Int
+  // 경매에 참여한 게시글 ID
+  item      Post     @relation(fields: [itemId], references: [id])
+  // 경매에 참여한 게시글
+  userId    Int
+  // 경매에 참여한 유저 ID
+  user      User     @relation(fields: [userId], references: [id])
+  // 경매에 참여한 유저
+  price     Int
+  // 입찰 가격
+  createdAt DateTime @default(now())
+  // 입찰 시간
+  updatedAt DateTime @updatedAt
+  // 입찰 수정 시간
 }
