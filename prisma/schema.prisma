@@ -8,34 +8,34 @@ datasource db {
 }
 
 model User {
-  id               Int               @id @default(autoincrement())
+  id           Int               @id @default(autoincrement())
   // 사용자 닉네임
-  nickname         String            @unique
+  nickname     String            @unique
   // 사용자 전화번호
-  phone            String            @unique
+  phone        String            @unique
   // 사용자 프로필 사진
-  picture          String?           @db.VarChar(100)
+  picture      String?           @db.VarChar(100)
   // 사용자 생성 시간
-  createdAt        DateTime          @default(now())
+  createdAt    DateTime          @default(now())
   // 프로필 마지막 수정 시간
-  updatedAt        DateTime          @updatedAt
+  updatedAt    DateTime          @updatedAt
   // 사용자 삭제 시간 (존재할 시 없는 사용자로 취급)
-  deletedAt        DateTime?
+  deletedAt    DateTime?
   // 상호작용 (조회, 좋아요, 채팅)
-  ItemInteractions ItemInteraction[]
+  interactions PostInteraction[]
   // 입찰
-  ItemBids         ItemBid[]
+  bids         PostBid[]
   // 게시글
-  Posts            Post[]
+  posts        Post[]
 }
 
-enum ItemType {
+enum PostType {
   sell
   buy
   auction
 }
 
-enum ItemStatus {
+enum PostStatus {
   default
   reserved
   done
@@ -55,17 +55,17 @@ model Post {
   // 게시글 작성자
   user             User              @relation(fields: [userId], references: [id])
   // 게시글 종류 (판매, 구매, 경매)
-  type             ItemType
+  type             PostType
   // 게시글 상태 (기본, 예약됨, 거래완료, 취소됨)
-  status           ItemStatus        @default(default)
+  status           PostStatus        @default(default)
   // 메타데이터 (키-값 쌍)
-  ItemMetadata     ItemMetadata[]
+  metadatas        PostMetadata[]
   // 카테고리
-  ItemCategory     ItemCategory?     @relation(fields: [itemCategoryId], references: [id])
+  category         PostCategory?     @relation(fields: [categoryId], references: [id])
   // 카테고리 ID
-  itemCategoryId   Int?
+  categoryId       Int?
   // 이미지
-  ItemImage        ItemImage[]
+  images           PostImage[]
   // 게시글 제목
   title            String            @db.VarChar(100)
   // 게시글 상세 설명 (내용)
@@ -83,9 +83,9 @@ model Post {
   // 거래 방식 (직거래, 택배, 둘 다)
   sellMethod       SellMethod
   // 상호작용 (조회, 좋아요, 채팅)
-  interactions     ItemInteraction[]
+  interactions     PostInteraction[]
   // 입찰
-  ItemBid          ItemBid[]
+  bids             PostBid[]
   // 게시글 작성 시간
   createdAt        DateTime          @default(now())
   // 게시글 마지막 수정 시간
@@ -100,12 +100,12 @@ enum InteractionType {
   chat
 }
 
-model ItemInteraction {
+model PostInteraction {
   id        Int             @id @default(autoincrement())
   // 상호작용한 게시글 ID
-  itemId    Int
+  postId    Int
   // 상호작용한 게시글
-  item      Post            @relation(fields: [itemId], references: [id])
+  post      Post            @relation(fields: [postId], references: [id])
   // 상호작용한 유저 ID
   userId    Int
   // 상호작용한 유저
@@ -121,7 +121,7 @@ enum PresetType {
   value
 }
 
-model ItemMetadataPreset {
+model PostMetadataPreset {
   id                Int            @id @default(autoincrement())
   // 프리셋 종류 (키, 값)
   type              PresetType
@@ -132,64 +132,64 @@ model ItemMetadataPreset {
   // 프리셋 생성 시간
   createdAt         DateTime       @default(now())
   // 이 프리셋을 키로 사용하는 메타데이터
-  keyMeta           ItemMetadata[] @relation("ItemMetadataPresetKey")
+  keyMeta           PostMetadata[] @relation("PostMetadataPresetKey")
   // 이 프리셋을 값으로 사용하는 메타데이터
-  valueMeta         ItemMetadata[] @relation("ItemMetadataPresetValue")
+  valueMeta         PostMetadata[] @relation("PostMetadataPresetValue")
 }
 
-model ItemMetadata {
+model PostMetadata {
   id        Int                @id @default(autoincrement())
   // 메타데이터가 속한 게시글 ID
-  itemId    Int
+  postId    Int
   // 메타데이터가 속한 게시글
-  item      Post               @relation(fields: [itemId], references: [id])
+  post      Post               @relation(fields: [postId], references: [id])
   // 메타데이터 프리셋 키 ID
   keyId     Int
   // 메타데이터 프리셋 키
-  key       ItemMetadataPreset @relation("ItemMetadataPresetKey", fields: [keyId], references: [id])
+  key       PostMetadataPreset @relation("PostMetadataPresetKey", fields: [keyId], references: [id])
   // 메타데이터 프리셋 값 ID
   valueId   Int
   // 메타데이터 프리셋 값
-  value     ItemMetadataPreset @relation("ItemMetadataPresetValue", fields: [valueId], references: [id])
+  value     PostMetadataPreset @relation("PostMetadataPresetValue", fields: [valueId], references: [id])
   // 메타데이터 내용
   content   String             @db.VarChar(100)
   // 메타데이터 생성 시간
   createdAt DateTime           @default(now())
 }
 
-model ItemCategory {
+model PostCategory {
   id        Int            @id @default(autoincrement())
   // 카테고리 이름
   name      String         @unique @db.VarChar(100)
   // 상위 카테고리
-  parent    ItemCategory?  @relation("ItemCategoryParent", fields: [parentId], references: [id])
+  parent    PostCategory?  @relation("PostCategoryParent", fields: [parentId], references: [id])
   // 상위 카테고리 ID
   parentId  Int?
   // 하위 카테고리
-  children  ItemCategory[] @relation("ItemCategoryParent")
+  children  PostCategory[] @relation("PostCategoryParent")
   // 이 카테고리에 속한 게시글
-  items     Post[]
+  posts     Post[]
   // 카테고리 생성 시간
   createdAt DateTime       @default(now())
 }
 
-model ItemImage {
+model PostImage {
   // 이미지 ID (AWS S3)
   imageId   Int      @id @unique
   // 이미지가 속한 게시글 ID
-  itemId    Int
+  postId    Int
   // 이미지가 속한 게시글
-  item      Post     @relation(fields: [itemId], references: [id])
+  post      Post     @relation(fields: [postId], references: [id])
   // 이미지 생성 시간
   createdAt DateTime @default(now())
 }
 
-model ItemBid {
+model PostBid {
   id        Int      @id @default(autoincrement())
   // 경매에 참여한 게시글 ID
-  itemId    Int
+  postId    Int
   // 경매에 참여한 게시글
-  item      Post     @relation(fields: [itemId], references: [id])
+  post      Post     @relation(fields: [postId], references: [id])
   // 경매에 참여한 유저 ID
   userId    Int
   // 경매에 참여한 유저
