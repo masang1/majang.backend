@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Patch, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { AuthService } from 'src/auth/auth.service';
-import { CreateSessionDto, CreateSessionResponseDto } from 'src/auth/auth.dto';
+import { CreateSessionDto, CreateSessionResponseDto } from 'src/auth/dto/session.dto';
 import { AuthUser } from 'src/auth/auth.decorator';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { UserDetailDto, UserUpdateDto, UserUpdateResponseDto } from './dto/user-profile.dto';

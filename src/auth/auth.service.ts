@@ -2,7 +2,7 @@ import { InjectRedis } from '@liaoliaots/nestjs-redis';
 import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import Redis from 'ioredis';
 import { SmsService } from './sms.service';
-import { CreateSessionDto, CreateSessionResponseDto } from './auth.dto';
+import { CreateSessionDto, CreateSessionResponseDto } from './dto/session.dto';
 import { UserService } from 'src/user/user.service';
 import { ConfigService } from '@nestjs/config';
 import { AuthCodeConfig } from 'config/interface';
