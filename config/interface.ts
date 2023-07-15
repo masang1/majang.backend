@@ -16,3 +16,10 @@ export interface AuthCodeConfig {
 export interface SessionConfig {
     redisUrl: string
 }
+
+export interface StorageConfig {
+    bucket: string
+    region: string
+    accessKey: string
+    secretKey: string
+}

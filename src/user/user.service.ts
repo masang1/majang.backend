@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 import { User } from '@prisma/client';
 import { NicknameGenerator } from './utils/nicknames';
+import { UserProfileDto, UserUpdateDto, UserUpdateResponseDto } from './dto/user-profile.dto';
+import { StorageService } from 'src/storage/storage.service';
 
 @Injectable()
 export class UserService {
@@ -9,6 +11,7 @@ export class UserService {
 
     constructor(
         private readonly prisma: PrismaService,
+        private readonly storageService: StorageService
     ) { }
 
     /**
@@ -49,5 +52,45 @@ export class UserService {
      */
     async findById(id: number): Promise<User | null> {
         return this.prisma.user.findUnique({ where: { id } });
+    }
+
+    async update(user: User, data: UserUpdateDto, pictureFile?: Express.Multer.File): Promise<UserUpdateResponseDto> {
+        let username: string | undefined = data.nickname ?? undefined;
+        let picture: string | undefined = undefined;
+
+        // 닉네임 중복을 확인합니다.
+        if (!username || user.nickname === username) {
+            username = undefined;
+        } else if (await this.prisma.user.count({ where: { nickname: username } })) {
+            return { code: 'nickname_duplicated' }
+        }
+
+        // 프로필 사진을 업로드합니다.
+        if (pictureFile) {
+            picture = await this.storageService.uploadImage(pictureFile.buffer,
+                { width: 512, height: 512 }, 80, 'cover', { userId: user.id.toString() })
+            // 기존 사진을 삭제합니다.
+            if (user.picture) {
+                await this.storageService.delete(user.picture)
+            }
+        }
+
+        if (!username && !picture) {
+            return { code: 'unchanged' }
+        }
+
+        // 사용자 정보를 업데이트합니다.
+        user = await this.prisma.user.update({
+            where: { id: user.id },
+            data: {
+                nickname: username,
+                picture,
+            }
+        })
+
+        return {
+            code: 'updated',
+            profile: UserProfileDto.of(user)
+        }
     }
 }
