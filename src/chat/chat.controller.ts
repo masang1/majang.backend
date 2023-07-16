@@ -2,7 +2,7 @@
 https://docs.nestjs.com/controllers#controllers
 */
 
-import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Query, UseGuards } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { ApiOperation } from '@nestjs/swagger';
@@ -46,8 +46,10 @@ export class ChatController {
         description: '채팅방의 정보를 가져옵니다.',
     })
     async getChat(
-        @AuthUser() user: User,
-        @Param() chatId: number
+        @AuthUser()
+        user: User,
+        @Param('chatId', new ParseIntPipe())
+        chatId: number
     ) { return await this.chatService.get(chatId, user.id) }
 
     @Delete(':chatId')
@@ -57,8 +59,10 @@ export class ChatController {
         description: '채팅방을 나갑니다.',
     })
     async leaveChat(
-        @AuthUser() user: User,
-        @Param() chatId: number
+        @AuthUser()
+        user: User,
+        @Param('chatId', new ParseIntPipe())
+        chatId: number
     ) { await this.chatService.leave(chatId, user.id) }
 
     @Get(':chatId/messages')
@@ -68,20 +72,25 @@ export class ChatController {
         description: '채팅방 메시지를 가져옵니다',
     })
     async getMessages(
-        @AuthUser() user: User,
-        @Param() chatId: number,
-        @Query() skip?: number
+        @AuthUser()
+        user: User,
+        @Param('chatId', new ParseIntPipe())
+        chatId: number,
+        @Query('skip', new ParseIntPipe())
+        skip?: number
     ) { await this.chatService.getMessages(chatId, user.id, skip) }
 
-    @Post(':chatId/messages')
-    @UseGuards(AuthGuard)
-    @ApiOperation({
-        summary: '채팅방 메시지 보내기',
-        description: '채팅방 메시지를 보냅니다.',
-    })
-    async sendMessage(
-        @AuthUser() user: User,
-        @Param() chatId: number,
-        @Query() skip?: number
-    ) { await this.chatService.getMessages(chatId, user.id, skip) }
+    // @Post(':chatId/messages')
+    // @UseGuards(AuthGuard)
+    // @ApiOperation({
+    //     summary: '채팅방 메시지 보내기',
+    //     description: '채팅방 메시지를 보냅니다.',
+    // })
+    // async sendMessage(
+    //     @AuthUser() user: User,
+    //     @Param('chatId', new ParseIntPipe())
+    //     chatId: number,
+    //     @Query('skip', new ParseIntPipe())
+    //     skip?: number
+    // ) { await this.chatService.getMessages(chatId, user.id, skip) }
 }

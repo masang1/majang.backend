@@ -112,9 +112,18 @@ export class ChatService {
      * @param participantId 참여자 Id
      */
     async leave(chatId: number, participantId: number) {
+        // 채팅방 참여자 제거
         await this.prisma.chatParticipant.delete({
             where: { id: await this.getParticipantId(chatId, participantId) }
         })
+
+        // 채팅방 참여자가 0명이면 채팅방을 삭제합니다.
+        if (await this.prisma.chatParticipant.count({ where: { chatId: chatId } }) === 0) {
+            await this.prisma.chat.update({
+                where: { id: chatId },
+                data: { deletedAt: new Date() }
+            })
+        }
     }
 
     /**
