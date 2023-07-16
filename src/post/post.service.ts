@@ -59,6 +59,9 @@ export class PostService {
                 return { code: 'invalid_location' };
             }
 
+        if (data.type === 'auction' && !data.auctionUntil)
+            return { code: 'invalid_auction_until' };
+
         const item = await this.prisma.post.create({
             data: {
                 authorId: user.id,
@@ -68,12 +71,11 @@ export class PostService {
                 content: data.content,
                 price: data.price ? data.price : null,
                 condition: data.condition ? data.condition : null,
-                auctionUntil: data.auctionUntil ? new Date(Date.now() + data.auctionUntil) : null,
+                auctionUntil: data.auctionUntil ? new Date(Date.now() + (data.auctionUntil * 24 * 60 * 60 * 1000)) : null,
                 location: location,
                 sellMethod: SellMethod[data.sellMethod],
             }
         })
-
         for (const file of picture) {
             const fileId = await this.storageService.uploadImage(
                 file.buffer,
@@ -82,10 +84,19 @@ export class PostService {
                 { postId: item.id.toString() }
             );
 
+            const thumbnailId = await this.storageService.uploadImage(
+                file.buffer,
+                { width: 300, height: 300 },
+                80, 'cover',
+                { postId: item.id.toString() }
+            );
+
+
             await this.prisma.postImage.create({
                 data: {
                     postId: item.id,
-                    imageId: fileId,
+                    image: fileId,
+                    thumbnail: thumbnailId,
                 }
             })
         }
@@ -127,6 +138,8 @@ export class PostService {
             })
         }
 
-        return { code: 'success', data: item };
+        return { code: 'success', item: item };
     }
-}
+
+    async edit(user: User, postId: number, data: PostDto, picture: Array<Express.Multer.File>) {
+    }

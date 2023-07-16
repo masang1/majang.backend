@@ -5,7 +5,7 @@ import { CreateSessionDto, CreateSessionResponseDto } from 'src/auth/dto/session
 import { AuthUser } from 'src/auth/auth.decorator';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { PostDto, PostResultDto } from './dto/post.dto';
-import { FileInterceptor } from '@nestjs/platform-express/multer';
+import { FilesInterceptor } from '@nestjs/platform-express/multer';
 import { ApiConsumes, ApiOperation } from '@nestjs/swagger';
 import { StorageService } from 'src/storage/storage.service';
 import { PostService } from './post.service';
@@ -20,7 +20,7 @@ export class PostController {
 
     @Post()
     @UseGuards(AuthGuard)
-    @UseInterceptors(FileInterceptor("pictures", { limits: { fileSize: 1024 * 1024 * 5, files: 5 } }))
+    @UseInterceptors(FilesInterceptor("pictures", 5, { limits: { fileSize: 1024 * 1024 * 5 } }))
     @ApiConsumes('multipart/form-data')
     @ApiOperation({
         summary: "게시글 작성",

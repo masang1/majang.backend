@@ -67,7 +67,7 @@ export class StorageService {
         mode: 'cover' | 'contain' = 'contain',
         metadata: { [key: string]: string } = {}
     ): Promise<string> {
-        let image = sharp(file)
+        let image = sharp(file).rotate()
 
         if (size) {
             if (mode === 'cover') {
@@ -77,7 +77,7 @@ export class StorageService {
                 })
             } else {
                 image = image.resize(size.width, size.height, {
-                    fit: 'inside',
+                    fit: 'outside',
                     withoutEnlargement: true,
                 })
             }
