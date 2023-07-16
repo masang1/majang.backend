@@ -9,11 +9,13 @@ import { Module, forwardRef } from '@nestjs/common';
 import { AuthModule } from 'src/auth/auth.module';
 import { PostModule } from 'src/post/post.module';
 import { ConfigModule } from '@nestjs/config';
+import { StorageModule } from 'src/storage/storage.module';
 
 @Module({
     imports: [
         ConfigModule,
         AuthModule,
+        StorageModule,
         forwardRef(() => PostModule),
     ],
     controllers: [
