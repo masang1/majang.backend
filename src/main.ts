@@ -13,8 +13,8 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
-    forbidNonWhitelisted: true,
     transform: true,
+    forbidNonWhitelisted: true
   }));
 
   const options = new DocumentBuilder()
