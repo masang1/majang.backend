@@ -67,7 +67,7 @@ model Post {
   // 카테고리
   category         PostCategory?     @relation(fields: [categoryId], references: [id])
   // 카테고리 ID
-  categoryId       Int?
+  categoryId       Int
   // 이미지
   images           PostImage[]
   // 게시글 제목
@@ -156,8 +156,6 @@ model PostMetadata {
   valueId   Int
   // 메타데이터 프리셋 값
   value     PostMetadataPreset @relation("PostMetadataPresetValue", fields: [valueId], references: [id])
-  // 메타데이터 내용
-  content   String             @db.VarChar(100)
   // 메타데이터 생성 시간
   createdAt DateTime           @default(now())
 }
@@ -180,7 +178,7 @@ model PostCategory {
 
 model PostImage {
   // 이미지 ID (AWS S3)
-  imageId   Int      @id @unique
+  imageId   String   @id @unique
   // 이미지가 속한 게시글 ID
   postId    Int
   // 이미지가 속한 게시글

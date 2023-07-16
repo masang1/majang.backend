@@ -23,3 +23,9 @@ export interface StorageConfig {
     accessKey: string
     secretKey: string
 }
+
+export interface NaverMapConfig {
+    applicationName: string
+    accessKeyId: string
+    secretAccessKey: string
+}

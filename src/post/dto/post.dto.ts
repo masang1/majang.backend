@@ -1,7 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger"
 import { PostType, SellMethod } from "@prisma/client"
-import { IsOptional, IsString, IsInt, IsEnum, IsBoolean, ValidateNested, IsObject, IsNumber } from "class-validator"
-import { Type } from "class-transformer"
+import { IsOptional, IsString, IsInt, IsEnum, IsBoolean, ValidateNested, IsNumber, Min, Max } from "class-validator"
+import { Type, plainToInstance, Transform } from "class-transformer"
 
 class LocationDto {
     @IsNumber()
@@ -37,6 +37,7 @@ export class PostDto {
     content: string
 
     @IsInt()
+    @Max(9900000)
     @ApiProperty({ description: '게시글 가격' })
     price: number
 
@@ -46,17 +47,30 @@ export class PostDto {
 
     @IsInt()
     @IsOptional()
+    @Min(0)
+    @Max(4)
     @ApiProperty({ description: '상품 상태' })
     condition?: number
 
     @IsInt()
     @IsOptional()
+    @Min(3)
+    @Max(30)
     @ApiProperty({ description: '경매 종료 일자' })
     auctionUntil?: number
 
     @IsOptional()
+    @Transform(({ value }) =>
+        plainToInstance(LocationDto, () => {
+            try {
+                return JSON.parse(value)
+            }
+            catch {
+                return null
+            }
+        })
+    )
     @ValidateNested()
-    @Type(() => LocationDto)
     @ApiProperty({ description: '직거래 거래 장소' })
     location?: LocationDto
 
@@ -65,7 +79,16 @@ export class PostDto {
     categoryId: number
 
     @IsOptional()
-    @Type(() => MetadataDto)
+    @Transform(({ value }) =>
+        plainToInstance(MetadataDto, () => {
+            try {
+                return JSON.parse(value)
+            }
+            catch {
+                return null
+            }
+        })
+    )
     @ValidateNested({ each: true })
     @ApiProperty({ description: '게시글 메타데이터' })
     metadata?: MetadataDto[]
