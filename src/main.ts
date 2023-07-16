@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import './prototype';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { PrismaExceptionFilter } from './app/prisma.filter';
 
 declare const module: any;
 
@@ -10,7 +11,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.setGlobalPrefix('api');
-
+  app.useGlobalFilters(new PrismaExceptionFilter())
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
     transform: true,
