@@ -4,10 +4,18 @@ import { IsOptional, IsString, IsInt, IsEnum, IsBoolean, ValidateNested, IsNumbe
 import { Type, plainToInstance, Transform } from "class-transformer"
 
 class LocationDto {
+    @Transform(({ value }) => {
+        const num = parseFloat(value)
+        return isNaN(num) ? null : num
+    })
     @IsNumber()
     @ApiProperty({ description: '위도' })
     latitude: number
 
+    @Transform(({ value }) => {
+        const num = parseFloat(value)
+        return isNaN(num) ? null : num
+    })
     @IsNumber()
     @ApiProperty({ description: '경도' })
     longitude: number
@@ -36,15 +44,26 @@ export class PostDto {
     @ApiProperty({ description: '게시글 내용' })
     content: string
 
+    @Transform(({ value }) => {
+        const num = parseInt(value)
+        return isNaN(num) ? null : num
+    })
     @IsInt()
     @Max(9900000)
     @ApiProperty({ description: '게시글 가격' })
     price: number
 
+    @Transform(({ value }) => {
+        return value == "true" ? true : false
+    })
     @IsBoolean()
     @ApiProperty({ description: '배송비 포함 여부' })
     shippingIncluded: boolean
 
+    @Transform(({ value }) => {
+        const num = parseInt(value)
+        return isNaN(num) ? null : num
+    })
     @IsInt()
     @IsOptional()
     @Min(0)
@@ -52,6 +71,10 @@ export class PostDto {
     @ApiProperty({ description: '상품 상태' })
     condition?: number
 
+    @Transform(({ value }) => {
+        const num = parseInt(value)
+        return isNaN(num) ? null : num
+    })
     @IsInt()
     @IsOptional()
     @Min(3)
@@ -60,35 +83,35 @@ export class PostDto {
     auctionUntil?: number
 
     @IsOptional()
-    @Transform(({ value }) =>
-        plainToInstance(LocationDto, () => {
-            try {
-                return JSON.parse(value)
-            }
-            catch {
-                return null
-            }
-        })
-    )
-    @ValidateNested()
+    @Transform(({ value }) => {
+        try {
+            return plainToInstance(LocationDto, JSON.parse(value))
+        }
+        catch {
+            return plainToInstance(LocationDto, {})
+        }
+    })
+    @ValidateNested({ each: true })
     @ApiProperty({ description: '직거래 거래 장소' })
     location?: LocationDto
 
+    @Transform(({ value }) => {
+        const num = parseInt(value)
+        return isNaN(num) ? null : num
+    })
     @IsInt()
     @ApiProperty({ description: '게시글 카테고리 ID' })
     categoryId: number
 
     @IsOptional()
-    @Transform(({ value }) =>
-        plainToInstance(MetadataDto, () => {
-            try {
-                return JSON.parse(value)
-            }
-            catch {
-                return null
-            }
-        })
-    )
+    @Transform(({ value }) => {
+        try {
+            return plainToInstance(MetadataDto, JSON.parse(value))
+        }
+        catch {
+            return plainToInstance(MetadataDto, {})
+        }
+    })
     @ValidateNested({ each: true })
     @ApiProperty({ description: '게시글 메타데이터' })
     metadata?: MetadataDto[]

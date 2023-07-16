@@ -178,7 +178,9 @@ model PostCategory {
 
 model PostImage {
   // 이미지 ID (AWS S3)
-  imageId   String   @id @unique
+  image     String   @id @unique
+  // 압축된 썸네일용 이미지 ID (AWS S3)
+  thumbnail String   @unique
   // 이미지가 속한 게시글 ID
   postId    Int
   // 이미지가 속한 게시글

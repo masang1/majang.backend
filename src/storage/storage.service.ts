@@ -68,7 +68,7 @@ export class StorageService {
         metadata: { [key: string]: string } = {}
     ): Promise<string> {
         const { size, quality } = this.imageConfig[config]
-        let image = sharp(file)
+        let image = sharp(file).rotate()
 
         if (size) {
             if (mode === 'cover') {
@@ -78,7 +78,7 @@ export class StorageService {
                 })
             } else {
                 image = image.resize(size, size, {
-                    fit: 'inside',
+                    fit: 'outside',
                     withoutEnlargement: true,
                 })
             }
