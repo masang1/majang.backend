@@ -79,15 +79,15 @@ export class PostService {
         for (const file of picture) {
             const fileId = await this.storageService.uploadImage(
                 file.buffer,
-                { width: 2160, height: 2160 },
-                90, 'contain',
+                'large',
+                'contain',
                 { postId: item.id.toString() }
             );
 
             const thumbnailId = await this.storageService.uploadImage(
                 file.buffer,
-                { width: 300, height: 300 },
-                80, 'cover',
+                'small',
+                'contain',
                 { postId: item.id.toString() }
             );
 
