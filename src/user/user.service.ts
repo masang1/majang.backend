@@ -11,7 +11,7 @@ export class UserService {
 
     constructor(
         private readonly prisma: PrismaService,
-        private readonly storageService: StorageService
+        private readonly storageService: StorageService,
     ) { }
 
     /**
@@ -67,8 +67,8 @@ export class UserService {
 
         // 프로필 사진을 업로드합니다.
         if (pictureFile) {
-            picture = await this.storageService.uploadImage(pictureFile.buffer,
-                { width: 512, height: 512 }, 80, 'cover', { userId: user.id.toString() })
+            picture = await this.storageService.uploadImage(
+                pictureFile.buffer, 'xsmall', 'cover', { userId: user.id.toString() })
             // 기존 사진을 삭제합니다.
             if (user.picture) {
                 await this.storageService.delete(user.picture)

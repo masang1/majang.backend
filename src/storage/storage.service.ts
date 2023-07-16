@@ -1,13 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as AWS from 'aws-sdk';
-import { StorageConfig } from 'config/interface';
+import { StorageConfig, StorageImageConfig } from 'config/interface';
 import { randomBytes } from 'crypto';
 import * as sharp from 'sharp';
 
 @Injectable()
 export class StorageService {
     readonly storageConfig = this.configService.get<StorageConfig>('storage.backbone')
+    readonly imageConfig = this.configService.get<StorageImageConfig>('storage.image')
     readonly backbone = new AWS.S3({
         accessKeyId: this.storageConfig.accessKey,
         secretAccessKey: this.storageConfig.secretKey,
@@ -62,21 +63,21 @@ export class StorageService {
      */
     async uploadImage(
         file: ArrayBufferLike,
-        size?: { width: number, height: number },
-        quality: number = 80,
+        config: 'xsmall' | 'small' | 'medium' | 'large',
         mode: 'cover' | 'contain' = 'contain',
         metadata: { [key: string]: string } = {}
     ): Promise<string> {
+        const { size, quality } = this.imageConfig[config]
         let image = sharp(file)
 
         if (size) {
             if (mode === 'cover') {
-                image = image.resize(size.width, size.height, {
+                image = image.resize(size, size, {
                     fit: 'cover',
                     position: 'center',
                 })
             } else {
-                image = image.resize(size.width, size.height, {
+                image = image.resize(size, size, {
                     fit: 'inside',
                     withoutEnlargement: true,
                 })

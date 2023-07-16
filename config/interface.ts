@@ -24,8 +24,24 @@ export interface StorageConfig {
     secretKey: string
 }
 
+export interface ImageConfig {
+    quality: number
+    size: number
+}
+
+export interface StorageImageConfig {
+    xsmall: ImageConfig
+    small: ImageConfig
+    medium: ImageConfig
+    large: ImageConfig
+}
+
 export interface NaverMapConfig {
     applicationName: string
     accessKeyId: string
     secretAccessKey: string
+}
+
+export interface ChatMessageConfig {
+    pageSize: number
 }

@@ -1,139 +1,187 @@
-import { Injectable } from '@nestjs/common';
-import { Post } from '@prisma/client';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { MessageType, PostStatus } from '@prisma/client';
+import { ChatMessageConfig } from 'config/interface';
 import { PrismaService } from 'src/prisma.service';
+import { StorageService } from 'src/storage/storage.service';
 
 @Injectable()
 export class ChatService {
+    readonly messageConfig = this.configService.get<ChatMessageConfig>('chat.message')
+
     constructor(
         private readonly prisma: PrismaService,
+        private readonly configService: ConfigService,
+        private readonly storageService: StorageService
     ) { }
 
     /**
-     * 채팅방이 존재하는지 확인합니다.
-     * @param participantId 참여자 ID
-     * @param postId 게시글 ID
+     * 채팅방을 만듭니다.
+     * @param creatorId 생성자 Id
+     * @param postId 게시글 Id
      */
-    async exists(participantId: number, postId: number): Promise<boolean> {
-        return (await this.prisma.chat.count({
-            where: {
-                participants: { some: { id: participantId } },
-                post: { id: postId },
-            },
-        })) > 0;
-    }
+    async create(creatorId: number, postId: number) {
+        // 게시글이 존재하는지 확인합니다.
+        const post = await this.prisma.post.findUniqueOrThrow({
+            where: { id: postId, status: PostStatus.default },
+            select: { authorId: true },
+        })
 
-    /**
-     * 채팅방을 생성합니다.
-     */
-    async create(
-        creatorId: number,
-        postId: number,
-        participantIds?: number[]
-    ) {
-        if (!participantIds) {
-            const post: Post = await this.prisma.post.findUnique({
-                where: { id: postId },
-                include: { author: true },
-            });
-            participantIds = [creatorId, post.authorId];
-        }
+        // 게시글 작성자와 채팅방 생성자가 같은지 확인합니다.
+        if (post.authorId === creatorId)
+            throw new BadRequestException()
 
-        return this.prisma.chat.create({
+        // 채팅방이 이미 존재하는지 확인합니다.
+        const chat = await this.prisma.chat.findFirst({
+            where: { postId, participants: { some: { userId: creatorId } } },
+            select: { id: true },
+        })
+
+        if (chat)
+            return { chatId: chat.id }
+
+        // 채팅방을 생성합니다.
+        const newChat = await this.prisma.chat.create({
             data: {
                 post: { connect: { id: postId } },
-                participants: { connect: participantIds.map(id => ({ id })) },
+                participants: {
+                    create: [
+                        { userId: creatorId, lastReadAt: new Date() },
+                        { userId: post.authorId, lastReadAt: new Date() },
+                    ]
+                },
             },
-        });
+            select: { id: true },
+        })
+
+        return { chatId: newChat.id }
     }
 
     /**
-     * 채팅방을 찾습니다.
-     * @param participantId 참여자 ID
-     * @param postId 게시글 ID
+     * 채팅방 정보를 가져옵니다.
+     * @param chatId 채팅방 Id
+     * @param participantId 참여자 Id
      */
-    async find(
-        participantId: number,
-        postId: number,
-    ) {
-        return this.prisma.chat.findFirst({
-            where: {
-                participants: { some: { id: participantId } },
-                post: { id: postId },
-            },
-        });
-    }
-
-    /**
-     * 채팅방 미리보기 정보를 가져옵니다.
-     * @param participantId 참여자 ID (User ID)
-     */
-    async previews(
-        participantId: number,
-    ) {
-        // 채팅방의 마지막 읽은 시간을 가져옵니다.
-        const lastReadAts = (await this.prisma.chatParticipant.findMany({
-            where: { userId: participantId },
-            select: { chatId: true, lastReadAt: true },
-        }))
-
-        // 채팅방의 읽지 않은 메시지 개수를 가져옵니다.
-        const unreadCounts: { [key: number]: number } = {};
-
-        for (const { chatId, lastReadAt } of lastReadAts) {
-            unreadCounts[chatId] = await this.prisma.message.count({
-                where: {
-                    chatId,
-                    createdAt: { gte: lastReadAt ?? new Date(0) }
-                }
-            });
-        }
-
-        // 채팅방의 정보를 가져옵니다.
-        const chats = await this.prisma.chat.findMany({
-            where: { participants: { some: { userId: participantId } }, },
-            include: {
+    async get(chatId: number, participantId?: number) {
+        return await this.prisma.chat.findUniqueOrThrow({
+            where: { id: chatId, participants: { some: { userId: participantId } } },
+            select: {
+                id: true,
                 post: {
                     select: {
-                        // TODO: 게시글의 정보를 가져옵니다.
                         id: true,
+                        author: {
+                            select: { id: true, nickname: true, picture: true }
+                        },
+                        type: true,
+                        status: true,
+                        images: {
+                            take: 1,
+                            select: { imageId: true }
+                        },
                         title: true,
+                        price: true,
                     }
                 },
-                // 참여자 정보를 가져옵니다.
                 participants: {
                     select: {
                         user: {
-                            select: {
-                                id: true,
-                                nickname: true,
-                                picture: true,
-                            }
-                        },
-                        lastReadAt: true,
+                            select: { id: true, nickname: true, picture: true }
+                        }
                     }
-                },
-                // 최근 메시지 1개만 가져옵니다.
-                messages: {
-                    take: 1,
-                    select: {
-                        id: true,
-                        content: true,
-                        type: true,
-                        createdAt: true,
-                    },
-                    orderBy: { createdAt: 'desc' },
-                },
+                }
+            }
+        })
+    }
+
+    /**
+     * 채팅방 유저 정보 Id를 가져옵니다.
+     * @param chatId 채팅방 Id
+     * @param userId 유저 Id
+     */
+    async getParticipantId(chatId: number, userId: number) {
+        return (await this.prisma.chatParticipant.findFirstOrThrow({
+            where: { chatId, userId: userId },
+            select: { id: true },
+        })).id
+    }
+
+    /**
+     * 채팅방을 나갑니다.
+     * @param chatId 채팅방 Id
+     * @param participantId 참여자 Id
+     */
+    async leave(chatId: number, participantId: number) {
+        await this.prisma.chatParticipant.delete({
+            where: { id: await this.getParticipantId(chatId, participantId) }
+        })
+    }
+
+    /**
+     * 채팅방 메시지를 가져옵니다.
+     * @param chatId 채팅방 Id
+     * @param skip 스킵할 메시지 수 (주어진 값이 없으면 가장 최신 메시지를 조회하며, 아니면 가장 먼저 생긴 메시지 순으로 조회)
+     */
+    async getMessages(chatId: number, participantId: number, skip?: number) {
+        // 채팅방 참여 여부를 보장합니다.
+        await this.getParticipantId(chatId, participantId)
+
+        const [messages, messageCount] = await this.prisma.$transaction([
+            this.prisma.message.findMany({
+                where: { chatId: chatId },
+                take: this.messageConfig.pageSize,
+                skip: Math.max(0, skip - this.messageConfig.pageSize),
+                orderBy: {
+                    // page가 주어지지 않으면 가장 최근 항목을 조회한다.
+                    createdAt: skip ? 'asc' : 'desc'
+                }
+            }),
+            this.prisma.message.count({
+                where: { chatId: chatId }
+            })
+        ])
+
+        return { messages, messageCount }
+    }
+
+    /**
+     * 메시지를 생성합니다
+     * @param chatId 채팅 Id
+     * @param senderId 전송자 Id
+     * @param content 메시지 내용
+     * @param type 메시지 타입
+     */
+    async message(
+        chatId: number,
+        senderId: number,
+        content: string,
+        type: MessageType,
+        ensure: boolean = true
+    ) {
+        // 채팅방 참여 여부를 보장합니다.
+        if (ensure)
+            await this.getParticipantId(chatId, senderId)
+
+        const message = await this.prisma.message.create({
+            data: {
+                chatId,
+                senderId,
+                content,
+                type
             }
         })
 
-        // 채팅방의 정보를 정리합니다.
-        return chats.map(chat => ({
-            id: chat.id,
-            post: chat.post,
-            participants: chat.participants.map(p => p.user),
-            unreadCount: unreadCounts[chat.id] ?? 0,
-            lastMessage: chat.messages[0] ?? null,
-            lastReadAt: chat.participants.find(p => p.user.id === participantId)?.lastReadAt,
-        }))
+        return message
+    }
+
+    async image(
+        chatId: number,
+        senderId: number,
+        image: ArrayBufferLike,
+    ) {
+        await this.getParticipantId(chatId, senderId)
+
+        const imageId = await this.storageService.uploadImage(image,
+            { width: 512, height: 512 }, 80, 'cover', { userId: user.id.toString() })
     }
 }
