@@ -1,67 +1,71 @@
 import { ApiProperty } from "@nestjs/swagger"
 import { PostType, SellMethod } from "@prisma/client"
-import { IsOptional, IsString, IsInt, IsEnum, IsBoolean, ValidateNested } from "class-validator"
+import { IsOptional, IsString, IsInt, IsEnum, IsBoolean, ValidateNested, IsObject, IsNumber } from "class-validator"
+import { Type } from "class-transformer"
 
 class LocationDto {
+    @IsNumber()
     @ApiProperty({ description: '위도' })
-
     latitude: number
 
+    @IsNumber()
     @ApiProperty({ description: '경도' })
     longitude: number
 }
 
 class MetadataDto {
-    @ApiProperty({ description: '메타데이터 키' })
     @IsString()
+    @ApiProperty({ description: '메타데이터 키' })
     key: string
 
-    @ApiProperty({ description: '메타데이터 값' })
     @IsString()
+    @ApiProperty({ description: '메타데이터 값' })
     value: string
 }
 
 export class PostDto {
-    @ApiProperty({ description: '게시글 종류 (팝니다: sell, 삽니다: buy, 경매: auction)' })
     @IsEnum(PostType)
+    @ApiProperty({ description: '게시글 종류 (팝니다: sell, 삽니다: buy, 경매: auction)' })
     type: string
 
-    @ApiProperty({ description: '게시글 제목' })
     @IsString()
+    @ApiProperty({ description: '게시글 제목' })
     title: string
 
-    @ApiProperty({ description: '게시글 내용' })
     @IsString()
+    @ApiProperty({ description: '게시글 내용' })
     content: string
 
-    @ApiProperty({ description: '게시글 가격' })
     @IsInt()
+    @ApiProperty({ description: '게시글 가격' })
     price: number
 
-    @ApiProperty({ description: '배송비 포함 여부' })
     @IsBoolean()
+    @ApiProperty({ description: '배송비 포함 여부' })
     shippingIncluded: boolean
 
-    @ApiProperty({ description: '상품 상태' })
-    @IsOptional()
     @IsInt()
+    @IsOptional()
+    @ApiProperty({ description: '상품 상태' })
     condition?: number
 
-    @ApiProperty({ description: '경매 종료 일자' })
-    @IsOptional()
     @IsInt()
+    @IsOptional()
+    @ApiProperty({ description: '경매 종료 일자' })
     auctionUntil?: number
 
     @IsOptional()
     @ValidateNested()
+    @Type(() => LocationDto)
     @ApiProperty({ description: '직거래 거래 장소' })
     location?: LocationDto
 
-    @ApiProperty({ description: '게시글 카테고리 ID' })
     @IsInt()
+    @ApiProperty({ description: '게시글 카테고리 ID' })
     categoryId: number
 
     @IsOptional()
+    @Type(() => MetadataDto)
     @ValidateNested({ each: true })
     @ApiProperty({ description: '게시글 메타데이터' })
     metadata?: MetadataDto[]
