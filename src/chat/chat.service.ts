@@ -77,7 +77,7 @@ export class ChatService {
                         status: true,
                         images: {
                             take: 1,
-                            select: { imageId: true }
+                            select: { thumbnail: true }
                         },
                         title: true,
                         price: true,
@@ -174,16 +174,32 @@ export class ChatService {
         return message
     }
 
+    /**
+     * 이미지 메시지를 보냅니다.
+     * @param chatId 채팅방 Id
+     * @param senderId 전송자 Id
+     * @param image 이미지 데이터
+     */
     async image(
         chatId: number,
         senderId: number,
         image: ArrayBufferLike,
     ) {
         await this.getParticipantId(chatId, senderId)
-
-        const image = await this.storageService.uploadImage(
-            image, 'large', 'contain', { chatId: chatId.toString(), userId: senderId.toString() })
-
-
+        return await this.message(
+            chatId,
+            senderId,
+            await this.storageService.uploadImage(
+                image,
+                'large',
+                'contain',
+                {
+                    chatId: chatId.toString(),
+                    userId: senderId.toString()
+                }
+            ),
+            MessageType.image,
+            false
+        )
     }
 }

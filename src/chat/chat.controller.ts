@@ -73,5 +73,15 @@ export class ChatController {
         @Query() skip?: number
     ) { await this.chatService.getMessages(chatId, user.id, skip) }
 
-
+    @Post(':chatId/messages')
+    @UseGuards(AuthGuard)
+    @ApiOperation({
+        summary: '채팅방 메시지 보내기',
+        description: '채팅방 메시지를 보냅니다.',
+    })
+    async sendMessage(
+        @AuthUser() user: User,
+        @Param() chatId: number,
+        @Query() skip?: number
+    ) { await this.chatService.getMessages(chatId, user.id, skip) }
 }
