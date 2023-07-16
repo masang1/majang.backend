@@ -86,7 +86,7 @@ export class PostService {
             const thumbnailId = await this.storageService.uploadImage(
                 file.buffer,
                 'small',
-                'contain',
+                'cover',
                 { postId: item.id.toString() }
             );
 
@@ -137,16 +137,16 @@ export class PostService {
             })
         }
 
-        return { code: 'success', item: item };
+        return { code: 'success', itemId: item.id };
     }
 
     async edit(user: User, postId: number, data: PostEditDto, newImages: Array<Express.Multer.File>) {
         if (data.existingImages || newImages) {
-            const images = await this.prisma.postImage.findMany({
+            const existingImages = await this.prisma.postImage.findMany({
                 where: { postId: postId },
             });
 
-            const imageIds = images.map(image => image.image)
+            const imageIds = existingImages.map(image => image.image)
 
             const deleteImages = data.existingImages ? data.existingImages.filter(image => !imageIds.includes(image)) : [];
 
