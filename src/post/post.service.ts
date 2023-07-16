@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
-import { PostDto } from './dto/post.dto';
+import { PostDto, PostEditDto } from './dto/post.dto';
 import { User, PostImage, PostType, SellMethod, PresetType } from '@prisma/client';
 import { StorageService } from 'src/storage/storage.service';
 import { LocationUtil } from './utils/location.util';
@@ -37,7 +37,6 @@ export class PostService {
      * @param picture 게시글 사진 리스트
      * @returns 작성된 게시글
      */
-
     async create(user: User, data: PostDto, picture: Array<Express.Multer.File>) {
         const category = await this.prisma.postCategory.findUnique({
             where: { id: data.categoryId },
@@ -141,5 +140,43 @@ export class PostService {
         return { code: 'success', item: item };
     }
 
-    async edit(user: User, postId: number, data: PostDto, picture: Array<Express.Multer.File>) {
+    async edit(user: User, postId: number, data: PostEditDto, newImages: Array<Express.Multer.File>) {
+        if (data.existingImages || newImages) {
+            const images = await this.prisma.postImage.findMany({
+                where: { postId: postId },
+            });
+
+            const imageIds = images.map(image => image.image)
+
+            const deleteImages = data.existingImages ? data.existingImages.filter(image => !imageIds.includes(image)) : [];
+
+            for (const image of deleteImages) {
+                await this.storageService.delete(image);
+            }
+
+            for (const image of newImages) {
+                const fileId = await this.storageService.uploadImage(
+                    image.buffer,
+                    'large',
+                    'contain',
+                    { postId: postId.toString() }
+                );
+
+                const thumbnailId = await this.storageService.uploadImage(
+                    image.buffer,
+                    'small',
+                    'contain',
+                    { postId: postId.toString() }
+                );
+
+                await this.prisma.postImage.create({
+                    data: {
+                        postId: postId,
+                        image: fileId,
+                        thumbnail: thumbnailId,
+                    }
+                })
+            }
+        }
     }
+}
