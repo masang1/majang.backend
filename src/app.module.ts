@@ -15,6 +15,7 @@ import { AuthModule } from './auth/auth.module';
     UserModule,
     AuthModule,
     StorageModule,
+    ChatModule
   ],
   controllers: [],
   providers: [],

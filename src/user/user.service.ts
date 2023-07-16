@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 import { User } from '@prisma/client';
 import { NicknameGenerator } from './utils/nicknames';
-import { UserProfileDto, UserUpdateDto, UserUpdateResponseDto } from './dto/user-profile.dto';
+import { UserDto, UserUpdateDto, UserUpdateResponseDto } from './dto/user-profile.dto';
 import { StorageService } from 'src/storage/storage.service';
 
 @Injectable()
@@ -31,7 +31,7 @@ export class UserService {
     /**
      * 기초 정보를 가진 사용자를 생성합니다.
      */
-    async create(phone: string, nickname?: string): Promise<User> {
+    async create(phone: string, nickname?: string) {
         return this.prisma.user.create({
             data: {
                 phone,
@@ -43,14 +43,14 @@ export class UserService {
     /**
      * 전화번호로 사용자를 찾습니다.
      */
-    async findByPhone(phone: string): Promise<User | null> {
+    async findByPhone(phone: string) {
         return this.prisma.user.findUnique({ where: { phone } });
     }
 
     /**
      * id로 사용자를 찾습니다.
      */
-    async findById(id: number): Promise<User | null> {
+    async findById(id: number) {
         return this.prisma.user.findUnique({ where: { id } });
     }
 
@@ -90,7 +90,7 @@ export class UserService {
 
         return {
             code: 'updated',
-            profile: UserProfileDto.of(user)
+            profile: UserDto.of(user)
         }
     }
 }

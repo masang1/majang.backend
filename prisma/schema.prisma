@@ -18,7 +18,7 @@ model User {
   // 사용자 생성 시간
   createdAt        DateTime          @default(now())
   // 프로필 마지막 수정 시간
-  updatedAt        DateTime          @updatedAt
+  updatedAt        DateTime?         @updatedAt
   // 사용자 삭제 시간 (존재할 시 없는 사용자로 취급)
   deletedAt        DateTime?
   // 상호작용 (조회, 좋아요, 채팅)
@@ -27,8 +27,6 @@ model User {
   bids             PostBid[]
   // 게시글
   posts            Post[]
-  // 채팅방
-  chats            Chat[]
   // 채팅방 참여자 정보
   chatParticipants ChatParticipant[]
   // 채팅방 대화
@@ -57,9 +55,9 @@ enum SellMethod {
 model Post {
   id               Int               @id @default(autoincrement())
   // 게시글 작성자 ID
-  userId           Int
+  authorId         Int
   // 게시글 작성자
-  user             User              @relation(fields: [userId], references: [id])
+  author           User              @relation(fields: [authorId], references: [id])
   // 게시글 종류 (판매, 구매, 경매)
   type             PostType
   // 게시글 상태 (기본, 예약됨, 거래완료, 취소됨)
@@ -95,9 +93,10 @@ model Post {
   // 게시글 작성 시간
   createdAt        DateTime          @default(now())
   // 게시글 마지막 수정 시간
-  updatedAt        DateTime          @updatedAt
+  updatedAt        DateTime?         @updatedAt
   // 글 삭제 시간 (존재할 시 삭제된 게시글로 취급)
   deletedAt        DateTime?
+  Chat             Chat[]
 }
 
 enum InteractionType {
@@ -191,71 +190,74 @@ model PostImage {
 }
 
 model PostBid {
-  id        Int      @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   // 경매에 참여한 게시글 ID
   postId    Int
   // 경매에 참여한 게시글
-  post      Post     @relation(fields: [postId], references: [id])
+  post      Post      @relation(fields: [postId], references: [id])
   // 경매에 참여한 유저 ID
   userId    Int
   // 경매에 참여한 유저
-  user      User     @relation(fields: [userId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
   // 입찰 가격
   price     Int
   // 입찰 시간
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
   // 입찰 수정 시간
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime? @updatedAt
 }
 
 model Chat {
-  id               Int               @id @default(autoincrement())
+  id           Int               @id @default(autoincrement())
+  // 게시글 ID
+  postId       Int
+  // 게시글
+  post         Post              @relation(fields: [postId], references: [id])
   // 채팅방 생성 시간
-  createdAt        DateTime          @default(now())
+  createdAt    DateTime          @default(now())
   // 채팅방 마지막 수정 시간
-  updatedAt        DateTime          @updatedAt
+  updatedAt    DateTime?         @updatedAt
   // 채팅방 삭제 시간 (존재할 시 삭제된 채팅방으로 취급)
-  deletedAt        DateTime?
-  // 채팅방 참여자
-  participants     User[]
+  deletedAt    DateTime?
   // 채팅방 참여자 정보
-  participantsInfo ChatParticipant[]
+  participants ChatParticipant[]
   // 채팅방 대화
-  messages         Message[]
+  messages     Message[]
 }
 
 model ChatParticipant {
-  id              Int      @id @default(autoincrement())
+  id         Int      @id @default(autoincrement())
   // 채팅방 ID
-  chatId          Int
+  chatId     Int
   // 채팅방
-  chat            Chat     @relation(fields: [chatId], references: [id])
+  chat       Chat     @relation(fields: [chatId], references: [id])
   // 참여자 ID
-  userId          Int
+  userId     Int
   // 참여자
-  user            User     @relation(fields: [userId], references: [id])
-  // 참여자가 읽은 마지막 메시지 ID
-  lastRead        Int?
-  // 참여자가 읽은 마지막 메시지
-  lastReadMessage Message? @relation(fields: [lastRead], references: [id])
-  // 참여자가 채팅방에 들어온 시간
-  joinedAt        DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id])
+  // 참여자가 읽은 시간
+  lastReadAt DateTime @default(now())
+}
+
+enum MessageType {
+  text
+  image
 }
 
 model Message {
-  id              Int               @id @default(autoincrement())
+  id        Int         @id @default(autoincrement())
   // 메시지가 속한 채팅방 ID
-  chatId          Int
+  chatId    Int
   // 메시지가 속한 채팅방
-  chat            Chat              @relation(fields: [chatId], references: [id])
+  chat      Chat        @relation(fields: [chatId], references: [id])
   // 메시지를 보낸 유저 ID
-  userId          Int
+  senderId  Int
   // 메시지를 보낸 유저
-  user            User              @relation(fields: [userId], references: [id])
+  sender    User        @relation(fields: [senderId], references: [id])
   // 메시지 내용
-  content         String            @db.VarChar(5000)
+  content   String      @db.VarChar(5000)
+  // 메시지 종류 (텍스트, 이미지)
+  type      MessageType
   // 메시지 생성 시간
-  createdAt       DateTime          @default(now())
-  // 채팅방 참여자 정보
-  participantInfo ChatParticipant[]
+  createdAt DateTime    @default(now())
 }
