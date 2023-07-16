@@ -1,10 +1,10 @@
-import { Body, Controller, Get, Patch, Post, UploadedFile, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, UploadedFile, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { AuthService } from 'src/auth/auth.service';
 import { CreateSessionDto, CreateSessionResponseDto } from 'src/auth/dto/session.dto';
 import { AuthUser } from 'src/auth/auth.decorator';
 import { AuthGuard } from 'src/auth/auth.guard';
-import { PostDto, PostResultDto } from './dto/post.dto';
+import { PostDto, PostEditDto } from './dto/post.dto';
 import { FilesInterceptor } from '@nestjs/platform-express/multer';
 import { ApiConsumes, ApiOperation } from '@nestjs/swagger';
 import { StorageService } from 'src/storage/storage.service';
@@ -34,19 +34,20 @@ export class PostController {
         return this.postService.create(user, data, files);
     }
 
-    // @Patch('@me')
-    // @UseGuards(AuthGuard)
-    // @UseInterceptors(FileInterceptor('picture', { limits: { fileSize: 1024 * 1024 * 5 } }))
-    // @ApiConsumes('multipart/form-data')
-    // @ApiOperation({
-    //     summary: '사용자 프로필 수정',
-    //     description: '사용자 프로필을 부분적으로 수정합니다.',
-    // })
-    // async update_profile(
-    //     @AuthUser() user: User,
-    //     @UploadedFile() picture: Express.Multer.File | undefined,
-    //     @Body() data: UserUpdateDto
-    // ): Promise<UserUpdateResponseDto> {
-    //     return await this.userService.update(user, data, picture)
-    // }
+    @Patch(':id')
+    @UseGuards(AuthGuard)
+    @UseInterceptors(FilesInterceptor("newImages", 5, { limits: { fileSize: 1024 * 1024 * 5 } }))
+    @ApiConsumes('multipart/form-data')
+    @ApiOperation({
+        summary: "게시글 수정",
+        description: "게시글을 수정합니다.",
+    })
+    async updatepost(
+        @AuthUser() user: User,
+        @Body() data: PostEditDto,
+        @UploadedFiles() newImages: Array<Express.Multer.File>,
+        @Param('id') postId: number
+    ) {
+        return this.postService.edit(user, postId, data, newImages);
+    }
 }
