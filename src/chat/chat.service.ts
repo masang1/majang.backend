@@ -181,7 +181,9 @@ export class ChatService {
     ) {
         await this.getParticipantId(chatId, senderId)
 
-        const imageId = await this.storageService.uploadImage(image,
-            { width: 512, height: 512 }, 80, 'cover', { userId: user.id.toString() })
+        const image = await this.storageService.uploadImage(
+            image, 'large', 'contain', { chatId: chatId.toString(), userId: senderId.toString() })
+
+
     }
 }
