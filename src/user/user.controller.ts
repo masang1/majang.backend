@@ -7,7 +7,6 @@ import { AuthGuard } from 'src/auth/auth.guard';
 import { UserDetailDto, UserUpdateDto, UserUpdateResponseDto } from './dto/user-profile.dto';
 import { FileInterceptor } from '@nestjs/platform-express/multer';
 import { ApiConsumes, ApiOperation } from '@nestjs/swagger';
-import { StorageService } from 'src/storage/storage.service';
 import { UserService } from './user.service';
 
 @Controller('users')

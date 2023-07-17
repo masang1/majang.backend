@@ -118,9 +118,8 @@ export class AuthService {
     async validate(token: SessionToken | string): Promise<User | null> {
         token = await this.sessionService.validate(token)
 
-        if (!token) {
+        if (!token)
             return null
-        }
 
         return await this.userService.findById(token.identifier)
     }

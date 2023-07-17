@@ -17,14 +17,14 @@ export class SessionService {
      * @param token 세션 토큰
      */
     async validate(token: SessionToken | string): Promise<SessionToken | null> {
-        // 
-        if (typeof token === 'string') {
-            token = SessionToken.parse(token)
-        }
-
-        if (!token) {
+        if (!token)
             return null
-        }
+
+        if (typeof token === 'string')
+            token = SessionToken.parse(token)
+
+        if (!token)
+            return null
 
         return (await this.sessionRedis.get(token.identifier.toString()) === token.signature) ? token : null
     }

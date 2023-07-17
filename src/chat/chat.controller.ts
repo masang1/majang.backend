@@ -2,13 +2,15 @@
 https://docs.nestjs.com/controllers#controllers
 */
 
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { AuthGuard } from 'src/auth/auth.guard';
-import { ApiOperation } from '@nestjs/swagger';
+import { ApiConsumes, ApiOperation } from '@nestjs/swagger';
 import { AuthUser } from 'src/auth/auth.decorator';
 import { User } from '@prisma/client';
 import { CreateChatDto } from './dto/chat.dto';
+import { CreateMessageDto } from './dto/message.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('users/@me/chats')
 export class ChatController {
@@ -68,7 +70,7 @@ export class ChatController {
     @Get(':chatId/messages')
     @UseGuards(AuthGuard)
     @ApiOperation({
-        summary: '채팅방 메시지 가져오가',
+        summary: '채팅방 메시지 가져오기',
         description: '채팅방 메시지를 가져옵니다',
     })
     async getMessages(
@@ -80,17 +82,33 @@ export class ChatController {
         skip?: number
     ) { await this.chatService.getMessages(chatId, user.id, skip) }
 
-    // @Post(':chatId/messages')
-    // @UseGuards(AuthGuard)
-    // @ApiOperation({
-    //     summary: '채팅방 메시지 보내기',
-    //     description: '채팅방 메시지를 보냅니다.',
-    // })
-    // async sendMessage(
-    //     @AuthUser() user: User,
-    //     @Param('chatId', new ParseIntPipe())
-    //     chatId: number,
-    //     @Query('skip', new ParseIntPipe())
-    //     skip?: number
-    // ) { await this.chatService.getMessages(chatId, user.id, skip) }
+    @Post(':chatId/messages')
+    @UseGuards(AuthGuard)
+    @UseInterceptors(FileInterceptor('picture',
+        { limits: { fileSize: 1024 * 1024 * 5 } }))
+    @ApiConsumes('multipart/form-data')
+    @ApiOperation({
+        summary: '채팅방 메시지 보내기',
+        description: '채팅방 메시지를 보냅니다.',
+    })
+    async sendMessage(
+        @AuthUser() user: User,
+        @Param('chatId', new ParseIntPipe())
+        chatId: number,
+        @UploadedFile()
+        picture: Express.Multer.File | undefined,
+        @Body()
+        data: CreateMessageDto
+    ) {
+        if (picture && data.message)
+            throw new BadRequestException()
+
+        if (picture) {
+            return await this.chatService.image(chatId,
+                user.id, picture.buffer)
+        }
+
+        return this.chatService.message(chatId,
+            user.id, data.message)
+    }
 }

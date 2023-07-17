@@ -4,11 +4,15 @@ import { AppModule } from './app.module';
 import './prototype';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { PrismaExceptionFilter } from './app/prisma.filter';
+import 'winston-daily-rotate-file';
+import { AppLogger } from './app/app.logger';
 
 declare const module: any;
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger: new AppLogger(),
+  });
 
   app.setGlobalPrefix('api');
   app.useGlobalFilters(new PrismaExceptionFilter())

@@ -10,6 +10,7 @@ import { AuthModule } from 'src/auth/auth.module';
 import { PostModule } from 'src/post/post.module';
 import { ConfigModule } from '@nestjs/config';
 import { StorageModule } from 'src/storage/storage.module';
+import { ChatGateway } from './chat.gateway';
 
 @Module({
     imports: [
@@ -23,7 +24,8 @@ import { StorageModule } from 'src/storage/storage.module';
     ],
     providers: [
         ChatService,
-        PrismaService
+        ChatGateway,
+        PrismaService,
     ],
 })
 export class ChatModule { }

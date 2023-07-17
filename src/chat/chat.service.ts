@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MessageType, PostStatus } from '@prisma/client';
 import { ChatMessageConfig } from 'config/interface';
@@ -33,7 +33,11 @@ export class ChatService {
 
         // 채팅방이 이미 존재하는지 확인합니다.
         const chat = await this.prisma.chat.findFirst({
-            where: { postId, participants: { some: { userId: creatorId } } },
+            where: {
+                postId,
+                participants: { some: { userId: creatorId } },
+                deletedAt: null
+            },
             select: { id: true },
         })
 
@@ -64,7 +68,11 @@ export class ChatService {
      */
     async get(chatId: number, participantId?: number) {
         return await this.prisma.chat.findUniqueOrThrow({
-            where: { id: chatId, participants: { some: { userId: participantId } } },
+            where: {
+                id: chatId,
+                participants: { some: { userId: participantId } },
+                deletedAt: null
+            },
             select: {
                 id: true,
                 post: {
@@ -99,9 +107,13 @@ export class ChatService {
      * @param chatId 채팅방 Id
      * @param userId 유저 Id
      */
-    async getParticipantId(chatId: number, userId: number) {
+    async getParticipantId(chatId: number, userId: number, isNotDeleted: boolean = true) {
         return (await this.prisma.chatParticipant.findFirstOrThrow({
-            where: { chatId, userId: userId },
+            where: {
+                chatId,
+                userId: userId,
+                chat: { deletedAt: isNotDeleted ? null : undefined }
+            },
             select: { id: true },
         })).id
     }
@@ -120,7 +132,7 @@ export class ChatService {
         // 채팅방 참여자가 0명이면 채팅방을 삭제합니다.
         if (await this.prisma.chatParticipant.count({ where: { chatId: chatId } }) === 0) {
             await this.prisma.chat.update({
-                where: { id: chatId },
+                where: { id: chatId, deletedAt: null },
                 data: { deletedAt: new Date() }
             })
         }
@@ -164,7 +176,7 @@ export class ChatService {
         chatId: number,
         senderId: number,
         content: string,
-        type: MessageType,
+        type: MessageType = MessageType.text,
         ensure: boolean = true
     ) {
         // 채팅방 참여 여부를 보장합니다.
