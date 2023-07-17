@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 import { PostDto, PostEditDto } from './dto/post.dto';
-import { User, PostImage, PostType, SellMethod, PresetType } from '@prisma/client';
+import { User, PostImage, PostType, SellMethod, PresetType, PostStatus } from '@prisma/client';
 import { StorageService } from 'src/storage/storage.service';
 import { LocationUtil } from './utils/location.util';
 import { NaverMapConfig } from 'config/interface';
@@ -43,7 +43,7 @@ export class PostService {
         });
 
         if (!category)
-            return { code: 'category_not_found' };
+            throw new HttpException("category_not_found", HttpStatus.NOT_FOUND);
 
         let location: string | null = null;
 
@@ -55,11 +55,11 @@ export class PostService {
             }
             catch
             {
-                return { code: 'invalid_location' };
+                throw new HttpException("invalid_location", HttpStatus.BAD_REQUEST);
             }
 
         if (data.type === 'auction' && !data.auctionUntil)
-            return { code: 'invalid_auction_until' };
+            throw new HttpException("invalid_auctionuntil", HttpStatus.BAD_REQUEST);
 
         const item = await this.prisma.post.create({
             data: {
@@ -140,32 +140,50 @@ export class PostService {
         return { code: 'success', itemId: item.id };
     }
 
+    /**
+     * 게시글을 수정합니다.
+     * @param user 작성자 유저 객체
+     * @param postId 게시글 ID
+     * @param data 수정 데이터
+     * @param newImages 새로 추가된 이미지
+     */
     async edit(user: User, postId: number, data: PostEditDto, newImages: Array<Express.Multer.File>) {
+        const post = await this.prisma.post.findUniqueOrThrow({
+            where: { id: postId },
+        });
+
+        if (post.authorId !== user.id) {
+            throw new ForbiddenException();
+        }
+
         if (data.existingImages || newImages) {
             const existingImages = await this.prisma.postImage.findMany({
                 where: { postId: postId },
             });
 
-            const imageIds = existingImages.map(image => image.image)
-
-            const deleteImages = data.existingImages ? data.existingImages.filter(image => !imageIds.includes(image)) : [];
+            const keepImages = data.existingImages ? data.existingImages : [];
+            const deleteImages = existingImages.filter(image => !keepImages.includes(image.image));
 
             for (const image of deleteImages) {
-                await this.storageService.delete(image);
+                await this.storageService.delete(image.image);
+                await this.storageService.delete(image.thumbnail);
+                await this.prisma.postImage.delete({
+                    where: { image: image.image },
+                })
             }
 
-            for (const image of newImages) {
+            for (const file of newImages) {
                 const fileId = await this.storageService.uploadImage(
-                    image.buffer,
+                    file.buffer,
                     'large',
                     'contain',
                     { postId: postId.toString() }
                 );
 
                 const thumbnailId = await this.storageService.uploadImage(
-                    image.buffer,
+                    file.buffer,
                     'small',
-                    'contain',
+                    'cover',
                     { postId: postId.toString() }
                 );
 
@@ -178,5 +196,139 @@ export class PostService {
                 })
             }
         }
+
+        if (data.postStatus) {
+            await this.prisma.post.update({
+                where: { id: postId },
+                data: {
+                    status: PostStatus[data.postStatus],
+                }
+            })
+        }
+
+        if (data.title) {
+            await this.prisma.post.update({
+                where: { id: postId },
+                data: {
+                    title: data.title,
+                }
+            })
+        }
+
+        if (data.content) {
+            await this.prisma.post.update({
+                where: { id: postId },
+                data: {
+                    content: data.content,
+                }
+            })
+        }
+
+        if (data.price) {
+            if (data.sellMethod == 'auction') {
+                await this.prisma.post.update({
+                    where: { id: postId },
+                    data: {
+                        price: data.price,
+                    }
+                })
+            }
+        }
+
+        if (data.condition) {
+            await this.prisma.post.update({
+                where: { id: postId },
+                data: {
+                    condition: data.condition,
+                }
+            })
+        }
+
+        if (data.location) {
+            try {
+                const location = await this.locationUtil.reverseGeocode(
+                    data.location.latitude, data.location.longitude
+                );
+
+                await this.prisma.post.update({
+                    where: { id: postId },
+                    data: {
+                        location: location,
+                    }
+                })
+            }
+            catch
+            {
+                throw new HttpException("invalid_location", HttpStatus.BAD_REQUEST);
+            }
+        }
+
+        if (data.categoryId) {
+            const category = await this.prisma.postCategory.findUniqueOrThrow({
+                where: { id: data.categoryId },
+            });
+
+            await this.prisma.post.update({
+                where: { id: postId },
+                data: {
+                    categoryId: category.id,
+                }
+            })
+        }
+
+        if (data.metadata) {
+            // remove all metadata
+            await this.prisma.postMetadata.deleteMany({
+                where: { postId: postId },
+            })
+
+            for (const metadata of data.metadata) {
+                // add postmetadatapreset if not exists
+                let key = await this.prisma.postMetadataPreset.findFirst({
+                    where: { content: metadata.key, type: PresetType["key"] },
+                });
+    
+                if (!key) {
+                    key = await this.prisma.postMetadataPreset.create({
+                        data: {
+                            content: metadata.key,
+                            type: PresetType["key"],
+                        }
+                    })
+                }
+    
+                let value = await this.prisma.postMetadataPreset.findFirst({
+                    where: { content: metadata.value, type: PresetType["value"] },
+                });
+    
+                if (!value) {
+                    value = await this.prisma.postMetadataPreset.create({
+                        data: {
+                            content: metadata.value,
+                            type: PresetType["value"],
+                        }
+                    })
+                }
+    
+                await this.prisma.postMetadata.create({
+                    data: {
+                        postId: postId,
+                        keyId: key.id,
+                        valueId: value.id,
+                    }
+                })
+            }
+        }
+
+        if (data.sellMethod) {
+            await this.prisma.post.update({
+                where: { id: postId },
+                data: {
+                    sellMethod: SellMethod[data.sellMethod],
+                }
+            })
+        }
+
+        return { code: 'success' };
     }
 }

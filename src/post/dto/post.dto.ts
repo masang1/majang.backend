@@ -171,17 +171,6 @@ export class PostEditDto {
     @ApiProperty({ description: '상품 상태' })
     condition?: number
 
-    @Transform(({ value }) => {
-        const num = parseInt(value)
-        return isNaN(num) ? null : num
-    })
-    @IsInt()
-    @IsOptional()
-    @Min(3)
-    @Max(30)
-    @ApiProperty({ description: '경매 종료 일자' })
-    auctionUntil?: number
-
     @IsOptional()
     @Transform(({ value }) => {
         try {
