@@ -42,6 +42,7 @@ export interface NaverMapConfig {
     secretAccessKey: string
 }
 
-export interface ChatMessageConfig {
-    pageSize: number
+export interface ChatPageConfig {
+    chat: number
+    message: number
 }

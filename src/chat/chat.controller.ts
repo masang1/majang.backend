@@ -1,13 +1,8 @@
-/*
-https://docs.nestjs.com/controllers#controllers
-*/
-
 import { BadRequestException, Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { ApiConsumes, ApiOperation } from '@nestjs/swagger';
 import { AuthUser } from 'src/auth/auth.decorator';
-import { User } from '@prisma/client';
 import { CreateChatDto } from './dto/chat.dto';
 import { CreateMessageDto } from './dto/message.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -18,17 +13,18 @@ export class ChatController {
         private readonly chatService: ChatService,
     ) { }
 
-    // @Get()
-    // @UseGuards(AuthGuard)
-    // @ApiOperation({
-    //     summary: '사용자 채팅 목록 가져오기',
-    //     description: '사용자가 참여한 채팅 목록을 가져옵니다.',
-    // })
-    // async previewChats(
-    //     @AuthUser() user: User,
-    // ) {
-    //     return await this.chatService.previews(user.id)
-    // }
+    @Get()
+    @UseGuards(AuthGuard)
+    @ApiOperation({
+        summary: '채팅방 목록 가져오기',
+        description: '채팅방 목록을 가져옵니다.',
+    })
+    async getChats(
+        @AuthUser()
+        userId: number,
+        @Query('page', new ParseIntPipe())
+        page: number
+    ) { return await this.chatService.all(userId, page) }
 
     @Post()
     @UseGuards(AuthGuard)
@@ -37,9 +33,11 @@ export class ChatController {
         description: '게시글에 대한 채팅방을 생성합니다.',
     })
     async createChat(
-        @AuthUser() user: User,
-        @Body() { postId }: CreateChatDto
-    ) { return await this.chatService.create(user.id, postId) }
+        @AuthUser()
+        userId: number,
+        @Body()
+        { postId }: CreateChatDto
+    ) { return await this.chatService.create(userId, postId) }
 
     @Get(':chatId')
     @UseGuards(AuthGuard)
@@ -49,10 +47,10 @@ export class ChatController {
     })
     async getChat(
         @AuthUser()
-        user: User,
+        userId: number,
         @Param('chatId', new ParseIntPipe())
         chatId: number
-    ) { return await this.chatService.get(chatId, user.id) }
+    ) { return await this.chatService.get(chatId, userId) }
 
     @Delete(':chatId')
     @UseGuards(AuthGuard)
@@ -62,10 +60,10 @@ export class ChatController {
     })
     async leaveChat(
         @AuthUser()
-        user: User,
+        userId: number,
         @Param('chatId', new ParseIntPipe())
         chatId: number
-    ) { await this.chatService.leave(chatId, user.id) }
+    ) { await this.chatService.leave(chatId, userId) }
 
     @Get(':chatId/messages')
     @UseGuards(AuthGuard)
@@ -75,12 +73,12 @@ export class ChatController {
     })
     async getMessages(
         @AuthUser()
-        user: User,
+        userId: number,
         @Param('chatId', new ParseIntPipe())
         chatId: number,
         @Query('skip', new ParseIntPipe())
-        skip?: number
-    ) { await this.chatService.getMessages(chatId, user.id, skip) }
+        skip: number
+    ) { return await this.chatService.messages(chatId, userId, skip) }
 
     @Post(':chatId/messages')
     @UseGuards(AuthGuard)
@@ -92,7 +90,8 @@ export class ChatController {
         description: '채팅방 메시지를 보냅니다.',
     })
     async sendMessage(
-        @AuthUser() user: User,
+        @AuthUser()
+        userId: number,
         @Param('chatId', new ParseIntPipe())
         chatId: number,
         @UploadedFile()
@@ -105,10 +104,10 @@ export class ChatController {
 
         if (picture) {
             return await this.chatService.image(chatId,
-                user.id, picture.buffer)
+                userId, picture.buffer)
         }
 
         return this.chatService.message(chatId,
-            user.id, data.message)
+            userId, data.message)
     }
 }

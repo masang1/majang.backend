@@ -9,6 +9,7 @@ import { AuthCodeConfig } from 'config/interface';
 import { SessionService } from './session.service';
 import { SessionToken } from './session';
 import { User } from '@prisma/client';
+import { PrismaService } from 'src/prisma.service';
 
 @Injectable()
 export class AuthService {
@@ -16,6 +17,7 @@ export class AuthService {
 
     constructor(
         private readonly configService: ConfigService,
+        private readonly prisma: PrismaService,
         private readonly userService: UserService,
         private readonly smsService: SmsService,
         private readonly sessionService: SessionService,
@@ -115,12 +117,14 @@ export class AuthService {
      * 사용자 세션을 검증합니다.
      * @param token 세션 토큰
      */
-    async validate(token: SessionToken | string): Promise<User | null> {
+    async validate(token: SessionToken | string) {
         token = await this.sessionService.validate(token)
 
         if (!token)
             return null
 
-        return await this.userService.findById(token.identifier)
+        return await this.prisma.user.count({
+            where: { id: token.identifier },
+        }) ? token : null
     }
 }

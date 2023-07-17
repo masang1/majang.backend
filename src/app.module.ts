@@ -8,12 +8,14 @@ import configuration from 'config/configuration';
 import { AuthModule } from './auth/auth.module';
 import { PostModule } from './post/post.module';
 import { LoggingMiddleware } from './app/logging.middleware';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       load: [configuration],
     }),
+    EventEmitterModule.forRoot(),
     UserModule,
     AuthModule,
     PostModule,

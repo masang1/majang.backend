@@ -37,7 +37,7 @@ export class PostService {
      * @param picture 게시글 사진 리스트
      * @returns 작성된 게시글
      */
-    async create(user: User, data: PostDto, picture: Array<Express.Multer.File>) {
+    async create(userId: number, data: PostDto, picture: Array<Express.Multer.File>) {
         const category = await this.prisma.postCategory.findUnique({
             where: { id: data.categoryId },
         });
@@ -63,7 +63,7 @@ export class PostService {
 
         const item = await this.prisma.post.create({
             data: {
-                authorId: user.id,
+                authorId: userId,
                 type: PostType[data.type],
                 categoryId: data.categoryId,
                 title: data.title,
@@ -147,12 +147,12 @@ export class PostService {
      * @param data 수정 데이터
      * @param newImages 새로 추가된 이미지
      */
-    async edit(user: User, postId: number, data: PostEditDto, newImages: Array<Express.Multer.File>) {
+    async edit(userId: number, postId: number, data: PostEditDto, newImages: Array<Express.Multer.File>) {
         const post = await this.prisma.post.findUniqueOrThrow({
             where: { id: postId },
         });
 
-        if (post.authorId !== user.id) {
+        if (post.authorId !== userId) {
             throw new ForbiddenException();
         }
 
@@ -287,7 +287,7 @@ export class PostService {
                 let key = await this.prisma.postMetadataPreset.findFirst({
                     where: { content: metadata.key, type: PresetType["key"] },
                 });
-    
+
                 if (!key) {
                     key = await this.prisma.postMetadataPreset.create({
                         data: {
@@ -296,11 +296,11 @@ export class PostService {
                         }
                     })
                 }
-    
+
                 let value = await this.prisma.postMetadataPreset.findFirst({
                     where: { content: metadata.value, type: PresetType["value"] },
                 });
-    
+
                 if (!value) {
                     value = await this.prisma.postMetadataPreset.create({
                         data: {
@@ -309,7 +309,7 @@ export class PostService {
                         }
                     })
                 }
-    
+
                 await this.prisma.postMetadata.create({
                     data: {
                         postId: postId,

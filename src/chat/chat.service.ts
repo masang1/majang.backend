@@ -1,15 +1,17 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { MessageType, PostStatus } from '@prisma/client';
-import { ChatMessageConfig } from 'config/interface';
+import { ChatPageConfig } from 'config/interface';
 import { PrismaService } from 'src/prisma.service';
 import { StorageService } from 'src/storage/storage.service';
 
 @Injectable()
 export class ChatService {
-    readonly messageConfig = this.configService.get<ChatMessageConfig>('chat.message')
+    readonly chatPageConfig = this.configService.get<ChatPageConfig>('chat.page')
 
     constructor(
+        private event: EventEmitter2,
         private readonly prisma: PrismaService,
         private readonly configService: ConfigService,
         private readonly storageService: StorageService
@@ -103,6 +105,112 @@ export class ChatService {
     }
 
     /**
+     * 채팅방 목록을 가져옵니다.
+     * @param participantId 참여자 Id
+     */
+    async all(
+        participantId?: number,
+        page: number = 0,
+    ) {
+        const [lastReadAts, totalCount] = await this.prisma.$transaction([
+            // 마지막으로 읽은 시간을 가져옵니다.
+            this.prisma.chatParticipant.findMany({
+                where: {
+                    userId: participantId,
+                    chat: { deletedAt: null }
+                },
+                select: {
+                    id: true,
+                    chatId: true,
+                    lastReadAt: true,
+                },
+                skip: page * this.chatPageConfig.chat,
+                take: this.chatPageConfig.chat,
+            }),
+            // 채팅방의 총 수를 가져옵니다.
+            this.prisma.chatParticipant.count({
+                where: {
+                    userId: participantId,
+                    chat: { deletedAt: null }
+                },
+            })
+        ])
+
+        if (!lastReadAts)
+            return []
+
+        // 읽지 않은 메시지 수를 구합니다.
+        const unreadCounts: { [key: number]: number } = (await this.prisma.message.groupBy({
+            by: ['chatId'],
+            where: {
+                senderId: { not: participantId },
+                OR: lastReadAts.map(({ chatId, lastReadAt }) => ({
+                    chatId,
+                    createdAt: { gt: lastReadAt }
+                }))
+            },
+            _count: { id: true }
+        })).reduce((acc, { chatId, _count }) => {
+            acc[chatId] = _count.id
+            return acc
+        }, {})
+
+        const [chats] = await this.prisma.$transaction([
+            // 채팅방 정보를 조회합니다.
+            this.prisma.chat.findMany({
+                where: { id: { in: lastReadAts.map(({ chatId }) => chatId) }, },
+                select: {
+                    id: true,
+                    post: {
+                        select: {
+                            id: true,
+                            type: true,
+                            status: true,
+                            images: {
+                                take: 1,
+                                select: { thumbnail: true }
+                            },
+                        }
+                    },
+                    participants: {
+                        select: {
+                            user: {
+                                select: {
+                                    id: true,
+                                    nickname: true,
+                                    picture: true
+                                }
+                            }
+                        }
+                    },
+                    messages: {
+                        take: 1,
+                        orderBy: {
+                            createdAt: 'desc'
+                        }
+                    }
+                }
+            }),
+        ])
+
+        // 최신 메시지 순으로 정렬합니다.
+        chats.sort((a, b) =>
+            b.messages[0].createdAt.getTime() -
+            a.messages[0].createdAt.getTime()
+        )
+
+        // 조회한 데이터를 정리하여 반환합니다.
+        return {
+            count: totalCount,
+            total: Math.ceil(totalCount / this.chatPageConfig.chat),
+            chats: chats.map(chat => ({
+                ...chat,
+                unreadCount: unreadCounts[chat.id] ?? 0
+            }))
+        }
+    }
+
+    /**
      * 채팅방 유저 정보 Id를 가져옵니다.
      * @param chatId 채팅방 Id
      * @param userId 유저 Id
@@ -143,17 +251,16 @@ export class ChatService {
      * @param chatId 채팅방 Id
      * @param skip 스킵할 메시지 수 (주어진 값이 없으면 가장 최신 메시지를 조회하며, 아니면 가장 먼저 생긴 메시지 순으로 조회)
      */
-    async getMessages(chatId: number, participantId: number, skip?: number) {
+    async messages(chatId: number, participantId: number, skip: number) {
         // 채팅방 참여 여부를 보장합니다.
         await this.getParticipantId(chatId, participantId)
-
-        const [messages, messageCount] = await this.prisma.$transaction([
+        let skipR = Math.max(0, skip - this.chatPageConfig.message)
+        let [messages, messageCount] = await this.prisma.$transaction([
             this.prisma.message.findMany({
                 where: { chatId: chatId },
-                take: this.messageConfig.pageSize,
-                skip: Math.max(0, skip - this.messageConfig.pageSize),
+                take: this.chatPageConfig.message,
+                skip: skipR,
                 orderBy: {
-                    // page가 주어지지 않으면 가장 최근 항목을 조회한다.
                     createdAt: skip ? 'asc' : 'desc'
                 }
             }),
@@ -161,6 +268,18 @@ export class ChatService {
                 where: { chatId: chatId }
             })
         ])
+
+        if (!skip) {
+            // 생성 순으로 정렬합니다.
+            messages = messages.reverse()
+            skipR = Math.max(0, messageCount - this.chatPageConfig.message)
+        }
+
+        // 메시지의 index를 추가합니다.
+        messages = messages.map((message, index) => ({
+            index: skipR + index,
+            ...message,
+        }))
 
         return { messages, messageCount }
     }
@@ -183,14 +302,27 @@ export class ChatService {
         if (ensure)
             await this.getParticipantId(chatId, senderId)
 
-        const message = await this.prisma.message.create({
-            data: {
-                chatId,
-                senderId,
-                content,
-                type
-            }
-        })
+        let [message, messageCount]: [object, number] = await this.prisma.$transaction([
+            this.prisma.message.create({
+                data: {
+                    chatId,
+                    senderId,
+                    content,
+                    type
+                }
+            }),
+            this.prisma.message.count({
+                where: { chatId: chatId }
+            })
+        ])
+
+        message = {
+            index: messageCount - 1,
+            ...message,
+        }
+
+        // 채팅방 참여자에게 메시지를 전송합니다.
+        this.event.emit('chat.message', message)
 
         return message
     }

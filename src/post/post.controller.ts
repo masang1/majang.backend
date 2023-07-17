@@ -27,11 +27,12 @@ export class PostController {
         description: "게시글을 작성합니다.",
     })
     async postpost(
-        @AuthUser() user: User,
+        @AuthUser()
+        userId: number,
         @Body() data: PostDto,
         @UploadedFiles() files: Array<Express.Multer.File>
     ) {
-        return this.postService.create(user, data, files);
+        return this.postService.create(userId, data, files);
     }
 
     @Patch(':id')
@@ -43,11 +44,12 @@ export class PostController {
         description: "게시글을 수정합니다.",
     })
     async updatepost(
-        @AuthUser() user: User,
+        @AuthUser()
+        userId: number,
         @Body() data: PostEditDto,
         @UploadedFiles() newImages: Array<Express.Multer.File>,
         @Param('id') postId: number
     ) {
-        return this.postService.edit(user, postId, data, newImages);
+        return this.postService.edit(userId, postId, data, newImages);
     }
 }

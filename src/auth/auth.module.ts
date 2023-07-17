@@ -6,6 +6,7 @@ import { AuthCodeConfig, SessionConfig } from 'config/interface';
 import { SmsService } from './sms.service';
 import { SessionService } from './session.service';
 import { UserModule } from 'src/user/user.module';
+import { PrismaService } from 'src/prisma.service';
 
 @Module({
   imports: [
@@ -32,7 +33,8 @@ import { UserModule } from 'src/user/user.module';
   providers: [
     SmsService,
     SessionService,
-    AuthService
+    AuthService,
+    PrismaService
   ],
   exports: [
     SessionService,
