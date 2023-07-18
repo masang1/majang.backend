@@ -338,19 +338,22 @@ export class ChatService {
         senderId: number,
         image: ArrayBufferLike,
     ) {
+        console.log('asdfesfjosrdfgiolsrjnfsledfleasjflkjasljdes;oklfnsedal;k');
         await this.getParticipantId(chatId, senderId)
+        const img = await this.storageService.uploadImage(
+            image,
+            'large',
+            'contain',
+            {
+                chatId: chatId.toString(),
+                userId: senderId.toString()
+            }
+        )
+
         return await this.message(
             chatId,
             senderId,
-            await this.storageService.uploadImage(
-                image,
-                'large',
-                'contain',
-                {
-                    chatId: chatId.toString(),
-                    userId: senderId.toString()
-                }
-            ),
+            img,
             MessageType.image,
             false
         )

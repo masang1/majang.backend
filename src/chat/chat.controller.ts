@@ -99,7 +99,7 @@ export class ChatController {
         @Body()
         data: CreateMessageDto
     ) {
-        if (picture && data.message)
+        if ((picture == undefined) == (data.message == undefined))
             throw new BadRequestException()
 
         if (picture) {
