@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as AWS from 'aws-sdk';
 import { StorageConfig, StorageImageConfig } from 'config/interface';
@@ -67,25 +67,29 @@ export class StorageService {
         mode: 'cover' | 'contain' = 'contain',
         metadata: { [key: string]: string } = {}
     ): Promise<string> {
-        const { size, quality } = this.imageConfig[config]
-        let image = sharp(file).rotate()
+        try {
+            const { size, quality } = this.imageConfig[config]
+            let image = sharp(file).rotate()
 
-        if (size) {
-            if (mode === 'cover') {
-                image = image.resize(size, size, {
-                    fit: 'cover',
-                    position: 'center',
-                })
-            } else {
-                image = image.resize(size, size, {
-                    fit: 'outside',
-                    withoutEnlargement: true,
-                })
+            if (size) {
+                if (mode === 'cover') {
+                    image = image.resize(size, size, {
+                        fit: 'cover',
+                        position: 'center',
+                    })
+                } else {
+                    image = image.resize(size, size, {
+                        fit: 'outside',
+                        withoutEnlargement: true,
+                    })
+                }
             }
-        }
 
-        const buffer = await image.jpeg({ quality }).toBuffer()
-        return this.upload(buffer, 'image/jpeg', metadata)
+            const buffer = await image.jpeg({ quality }).toBuffer()
+            return this.upload(buffer, 'image/jpeg', metadata)
+        } catch {
+            throw new HttpException({ code: 'invalid_image_format' }, 400)
+        }
     }
 
     /**

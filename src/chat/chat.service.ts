@@ -168,7 +168,9 @@ export class ChatService {
                             status: true,
                             images: {
                                 take: 1,
-                                select: { thumbnail: true }
+                                select: { thumbnail: true },
+                                // 상품 이미지 생성 순으로 정렬합니다.
+                                orderBy: { createdAt: 'desc' }
                             },
                         }
                     },

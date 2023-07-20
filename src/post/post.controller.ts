@@ -1,15 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Post, UploadedFile, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
-import { User } from '@prisma/client';
+import { Body, Controller, Param, ParseIntPipe, Patch, Post, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { AuthService } from 'src/auth/auth.service';
-import { CreateSessionDto, CreateSessionResponseDto } from 'src/auth/dto/session.dto';
 import { AuthUser } from 'src/auth/auth.decorator';
 import { AuthGuard } from 'src/auth/auth.guard';
-import { PostDto, PostEditDto } from './dto/post.dto';
 import { FilesInterceptor } from '@nestjs/platform-express/multer';
 import { ApiConsumes, ApiOperation } from '@nestjs/swagger';
 import { StorageService } from 'src/storage/storage.service';
 import { PostService } from './post.service';
-
+import { CreatePostDto, UpdatePostDto } from './dto/post.dto';
 @Controller('posts')
 export class PostController {
     constructor(
@@ -26,30 +23,27 @@ export class PostController {
         summary: "게시글 작성",
         description: "게시글을 작성합니다.",
     })
-    async postpost(
+    async createPost(
         @AuthUser()
         userId: number,
-        @Body() data: PostDto,
-        @UploadedFiles() files: Array<Express.Multer.File>
-    ) {
-        return this.postService.create(userId, data, files);
-    }
+        @Body() data: CreatePostDto,
+        @UploadedFiles() pictures: Express.Multer.File[]
+    ) { return await this.postService.create(userId, data, pictures) }
 
-    @Patch(':id')
+    @Patch(':postId')
     @UseGuards(AuthGuard)
-    @UseInterceptors(FilesInterceptor("newImages", 5, { limits: { fileSize: 1024 * 1024 * 5 } }))
+    @UseInterceptors(FilesInterceptor("pictures", 5, { limits: { fileSize: 1024 * 1024 * 5 } }))
     @ApiConsumes('multipart/form-data')
     @ApiOperation({
-        summary: "게시글 수정",
-        description: "게시글을 수정합니다.",
+        summary: "게시글 업데이트",
+        description: "게시글을 업데이트합니다.",
     })
-    async updatepost(
+    async updatePost(
         @AuthUser()
         userId: number,
-        @Body() data: PostEditDto,
-        @UploadedFiles() newImages: Array<Express.Multer.File>,
-        @Param('id') postId: number
-    ) {
-        return this.postService.edit(userId, postId, data, newImages);
-    }
+        @Param('postId', new ParseIntPipe())
+        postId: number,
+        @Body() data: UpdatePostDto,
+        @UploadedFiles() pictures: Express.Multer.File[]
+    ) { return await this.postService.update(userId, postId, data, pictures) }
 }

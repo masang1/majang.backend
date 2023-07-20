@@ -1,21 +1,14 @@
 import { ApiProperty } from "@nestjs/swagger"
 import { PostStatus, PostType, SellMethod } from "@prisma/client"
-import { IsOptional, IsString, IsInt, IsEnum, IsBoolean, ValidateNested, IsNumber, Min, Max } from "class-validator"
-import { Type, plainToInstance, Transform } from "class-transformer"
+import { IsOptional, IsString, IsInt, IsEnum, IsBoolean, ValidateNested, IsNumber, Min, Max, IsNotEmpty, Length, ArrayMaxSize, ArrayMinSize, IsArray } from "class-validator"
+import { Transform } from "class-transformer"
+import { jsonTransform, stringArrayTransform } from "src/app/json.dto"
 
 class LocationDto {
-    @Transform(({ value }) => {
-        const num = parseFloat(value)
-        return isNaN(num) ? null : num
-    })
     @IsNumber()
     @ApiProperty({ description: '위도' })
     latitude: number
 
-    @Transform(({ value }) => {
-        const num = parseFloat(value)
-        return isNaN(num) ? null : num
-    })
     @IsNumber()
     @ApiProperty({ description: '경도' })
     longitude: number
@@ -31,39 +24,34 @@ class MetadataDto {
     value: string
 }
 
-export class PostDto {
+export class CreatePostDto {
     @IsEnum(PostType)
     @ApiProperty({ description: '게시글 종류 (팝니다: sell, 삽니다: buy, 경매: auction)' })
     type: string
 
     @IsString()
+    @Length(1, 500)
+    @Transform(({ value }) => value?.trim())
     @ApiProperty({ description: '게시글 제목' })
     title: string
 
     @IsString()
+    @IsNotEmpty()
+    @Length(1, 500)
+    @Transform(({ value }) => value?.trim())
     @ApiProperty({ description: '게시글 내용' })
     content: string
 
-    @Transform(({ value }) => {
-        const num = parseInt(value)
-        return isNaN(num) ? null : num
-    })
     @IsInt()
-    @Max(9900000)
+    @Min(0)
+    @Max(9000000)
     @ApiProperty({ description: '게시글 가격' })
     price: number
 
-    @Transform(({ value }) => {
-        return value == "true" ? true : false
-    })
     @IsBoolean()
     @ApiProperty({ description: '배송비 포함 여부' })
     shippingIncluded: boolean
 
-    @Transform(({ value }) => {
-        const num = parseInt(value)
-        return isNaN(num) ? null : num
-    })
     @IsInt()
     @IsOptional()
     @Min(0)
@@ -71,10 +59,6 @@ export class PostDto {
     @ApiProperty({ description: '상품 상태' })
     condition?: number
 
-    @Transform(({ value }) => {
-        const num = parseInt(value)
-        return isNaN(num) ? null : num
-    })
     @IsInt()
     @IsOptional()
     @Min(3)
@@ -83,87 +67,60 @@ export class PostDto {
     auctionUntil?: number
 
     @IsOptional()
-    @Transform(({ value }) => {
-        try {
-            return plainToInstance(LocationDto, JSON.parse(value))
-        }
-        catch {
-            return plainToInstance(LocationDto, {})
-        }
-    })
     @ValidateNested({ each: true })
+    @Transform(jsonTransform(LocationDto))
     @ApiProperty({ description: '직거래 거래 장소' })
     location?: LocationDto
 
-    @Transform(({ value }) => {
-        const num = parseInt(value)
-        return isNaN(num) ? null : num
-    })
     @IsInt()
     @ApiProperty({ description: '게시글 카테고리 ID' })
-    categoryId: number
+    category: number
 
     @IsOptional()
-    @Transform(({ value }) => {
-        try {
-            return plainToInstance(MetadataDto, JSON.parse(value))
-        }
-        catch {
-            return plainToInstance(MetadataDto, {})
-        }
-    })
     @ValidateNested({ each: true })
+    @Transform(jsonTransform(MetadataDto))
     @ApiProperty({ description: '게시글 메타데이터' })
     metadata?: MetadataDto[]
 
     @IsEnum(SellMethod)
     @ApiProperty({ description: '상품 거래 방식' })
-    sellMethod: string
+    method: string
 }
 
-export class PostEditDto {
+
+export class UpdatePostDto {
+    @IsOptional()
     @IsEnum(PostStatus)
-    @IsOptional()
-    @ApiProperty({ description: '상품 상태' })
-    postStatus?: string
+    @ApiProperty({ description: '게시글 상태' })
+    status?: string
 
     @IsOptional()
     @IsString()
-    @ApiProperty({ description: '기존에 등록된 이미지 ID 리스트' })
-    existingImages?: string[]
-
-    @IsString()
-    @IsOptional()
+    @Length(1, 500)
+    @Transform(({ value }) => value?.trim())
     @ApiProperty({ description: '게시글 제목' })
     title?: string
 
-    @IsString()
     @IsOptional()
+    @IsString()
+    @IsNotEmpty()
+    @Length(1, 500)
+    @Transform(({ value }) => value?.trim())
     @ApiProperty({ description: '게시글 내용' })
     content?: string
 
-    @Transform(({ value }) => {
-        const num = parseInt(value)
-        return isNaN(num) ? null : num
-    })
-    @IsOptional()
     @IsInt()
-    @Max(9900000)
+    @IsOptional()
+    @Min(0)
+    @Max(9000000)
     @ApiProperty({ description: '게시글 가격' })
     price?: number
 
-    @Transform(({ value }) => {
-        return value == "true" ? true : false
-    })
-    @IsOptional()
     @IsBoolean()
+    @IsOptional()
     @ApiProperty({ description: '배송비 포함 여부' })
     shippingIncluded?: boolean
 
-    @Transform(({ value }) => {
-        const num = parseInt(value)
-        return isNaN(num) ? null : num
-    })
     @IsInt()
     @IsOptional()
     @Min(0)
@@ -172,43 +129,31 @@ export class PostEditDto {
     condition?: number
 
     @IsOptional()
-    @Transform(({ value }) => {
-        try {
-            return plainToInstance(LocationDto, JSON.parse(value))
-        }
-        catch {
-            return plainToInstance(LocationDto, {})
-        }
-    })
     @ValidateNested({ each: true })
+    @Transform(jsonTransform(LocationDto))
     @ApiProperty({ description: '직거래 거래 장소' })
     location?: LocationDto
 
-    @Transform(({ value }) => {
-        const num = parseInt(value)
-        return isNaN(num) ? null : num
-    })
     @IsInt()
     @IsOptional()
     @ApiProperty({ description: '게시글 카테고리 ID' })
-    categoryId?: number
+    category?: number
 
     @IsOptional()
-    @Transform(({ value }) => {
-        try {
-            return plainToInstance(MetadataDto, JSON.parse(value))
-        }
-        catch {
-            return plainToInstance(MetadataDto, {})
-        }
-    })
     @ValidateNested({ each: true })
+    @Transform(jsonTransform(MetadataDto))
     @ApiProperty({ description: '게시글 메타데이터' })
     metadata?: MetadataDto[]
+
+    @IsArray()
+    @IsString({ each: true })
+    @ArrayMaxSize(5)
+    @Transform(stringArrayTransform)
+    @ApiProperty({ description: '유지할 이미지' })
+    keepPictures: string[]
 
     @IsEnum(SellMethod)
     @IsOptional()
     @ApiProperty({ description: '상품 거래 방식' })
-    sellMethod?: string
-
+    method?: string
 }

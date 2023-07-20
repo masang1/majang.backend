@@ -64,10 +64,10 @@ model Post {
   status           PostStatus        @default(default)
   // 메타데이터 (키-값 쌍)
   metadatas        PostMetadata[]
-  // 카테고리
-  category         PostCategory?     @relation(fields: [categoryId], references: [id])
   // 카테고리 ID
   categoryId       Int
+  // 카테고리
+  category         PostCategory?     @relation(fields: [categoryId], references: [id])
   // 이미지
   images           PostImage[]
   // 게시글 제목
@@ -96,7 +96,8 @@ model Post {
   updatedAt        DateTime?         @updatedAt
   // 글 삭제 시간 (존재할 시 삭제된 게시글로 취급)
   deletedAt        DateTime?
-  Chat             Chat[]
+  // 글 채팅
+  chat             Chat[]
 }
 
 enum InteractionType {
@@ -127,47 +128,37 @@ enum PresetType {
 }
 
 model PostMetadataPreset {
-  id                Int            @id @default(autoincrement())
+  id        Int        @id @default(autoincrement())
   // 프리셋 종류 (키, 값)
-  type              PresetType
-  // 시스템에 의해 생성된 프리셋인지 여부
-  isCreatedBySystem Boolean        @default(false)
+  type      PresetType
   // 프리셋 내용
-  content           String         @db.VarChar(100)
+  content   String
   // 프리셋 생성 시간
-  createdAt         DateTime       @default(now())
-  // 이 프리셋을 키로 사용하는 메타데이터
-  keyMeta           PostMetadata[] @relation("PostMetadataPresetKey")
-  // 이 프리셋을 값으로 사용하는 메타데이터
-  valueMeta         PostMetadata[] @relation("PostMetadataPresetValue")
+  createdAt DateTime   @default(now())
 }
 
 model PostMetadata {
-  id        Int                @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   // 메타데이터가 속한 게시글 ID
   postId    Int
   // 메타데이터가 속한 게시글
-  post      Post               @relation(fields: [postId], references: [id])
-  // 메타데이터 프리셋 키 ID
-  keyId     Int
-  // 메타데이터 프리셋 키
-  key       PostMetadataPreset @relation("PostMetadataPresetKey", fields: [keyId], references: [id])
-  // 메타데이터 프리셋 값 ID
-  valueId   Int
-  // 메타데이터 프리셋 값
-  value     PostMetadataPreset @relation("PostMetadataPresetValue", fields: [valueId], references: [id])
+  post      Post     @relation(fields: [postId], references: [id])
+  // 메타데이터 키
+  key       String
+  // 메타데이터 값
+  value     String
   // 메타데이터 생성 시간
-  createdAt DateTime           @default(now())
+  createdAt DateTime @default(now())
 }
 
 model PostCategory {
   id        Int            @id @default(autoincrement())
   // 카테고리 이름
   name      String         @unique @db.VarChar(100)
-  // 상위 카테고리
-  parent    PostCategory?  @relation("PostCategoryParent", fields: [parentId], references: [id])
   // 상위 카테고리 ID
   parentId  Int?
+  // 상위 카테고리
+  parent    PostCategory?  @relation("PostCategoryParent", fields: [parentId], references: [id])
   // 하위 카테고리
   children  PostCategory[] @relation("PostCategoryParent")
   // 이 카테고리에 속한 게시글

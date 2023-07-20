@@ -1,3 +1,4 @@
+import { HttpException } from "@nestjs/common";
 import { NaverMapConfig } from "config/interface";
 
 export class LocationUtil {
@@ -12,7 +13,6 @@ export class LocationUtil {
      * @returns 주소
      * @throws {Error} 주소를 가져오는데 실패했을 경우
      */
-
     async reverseGeocode(latitude: number, longitude: number): Promise<string> {
         const response = await fetch(
             "https://naveropenapi.apigw.ntruss.com/map-reversegeocode/v2/gc?" +
@@ -31,17 +31,15 @@ export class LocationUtil {
         )
 
         // check status code
-        if (response.status !== 200) {
-            throw new Error("Failed to get address from Naver Map API")
-        }
+        if (!response.ok)
+            throw new HttpException('Failed to get address', 404)
 
         // parse response
         const json = await response.json()
 
         // check status
-        if (json.status.code !== 0) {
-            throw new Error("Failed to get address from Naver Map API")
-        }
+        if (json.status.code !== 0)
+            throw new HttpException("Failed to get address", 404)
 
         // return address
         const region = json.results[0].region
