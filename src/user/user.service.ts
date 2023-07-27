@@ -1,8 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
-import { User } from '@prisma/client';
 import { NicknameGenerator } from './utils/nicknames';
-import { UserDto, UserUpdateDto, UserUpdateResponseDto } from './dto/user-profile.dto';
+import { UserDto, UserUpdateDto } from './dto/user-profile.dto';
 import { StorageService } from 'src/storage/storage.service';
 
 @Injectable()
@@ -41,29 +40,21 @@ export class UserService {
     }
 
     /**
-     * 전화번호로 사용자를 찾습니다.
+     * 사용자 정보를 업데이트합니다.
+     * @param userId 사용지 ID
+     * @param data 업데이트할 사용자 정보
+     * @param pictureFile 프로필 사진 파일
      */
-    async findByPhone(phone: string) {
-        return this.prisma.user.findUnique({ where: { phone } });
-    }
-
-    /**
-     * id로 사용자를 찾습니다.
-     */
-    async findById(id: number) {
-        return this.prisma.user.findUnique({ where: { id } });
-    }
-
-    async update(user: User, data: UserUpdateDto, pictureFile?: Express.Multer.File): Promise<UserUpdateResponseDto> {
+    async update(userId: number, data: UserUpdateDto, pictureFile?: Express.Multer.File) {
+        let user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } })
         let username: string | undefined = data.nickname ?? undefined;
         let picture: string | undefined = undefined;
 
         // 닉네임 중복을 확인합니다.
-        if (!username || user.nickname === username) {
+        if (!username || user.nickname === username)
             username = undefined;
-        } else if (await this.prisma.user.count({ where: { nickname: username } })) {
-            return { code: 'nickname_duplicated' }
-        }
+        else if (await this.prisma.user.count({ where: { nickname: username } }))
+            throw new BadRequestException({ code: 'nickname_duplicated' })
 
         // 프로필 사진을 업로드합니다.
         if (pictureFile) {
@@ -92,5 +83,21 @@ export class UserService {
             code: 'updated',
             profile: UserDto.of(user)
         }
+    }
+
+    async get(userId: number, detail: boolean) {
+        return this.prisma.user.findUniqueOrThrow({
+            where: { id: userId },
+            select: {
+                id: true,
+                nickname: true,
+                picture: true,
+                ...(detail ? {
+                    phone: true,
+                    createdAt: true,
+                    updatedAt: true,
+                } : {})
+            }
+        })
     }
 }

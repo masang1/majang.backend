@@ -25,15 +25,3 @@ export class CreateSessionDto {
     @ApiProperty({ description: '인증 코드' })
     public code: string | null;
 }
-
-
-
-export class CreateSessionResponseDto {
-    @ApiProperty({ description: '상태 코드' })
-    code: 'authorized' | 'code_sent' | 'invalid_code' | 'invalid_phone' | 'blocked' | 'user_notfound'
-    /**
-     * 세션 토큰
-     */
-    @ApiProperty({ description: '세션 토큰' })
-    token?: string
-}

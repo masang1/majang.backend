@@ -19,34 +19,10 @@ export class UserDto {
     }
 }
 
-export class UserDetailDto extends UserDto {
-    @ApiProperty({ description: '사용자 전화번호' })
-    phone: string
-    @ApiProperty({ description: '사용자 생성일' })
-    createdAt: Date
-    @ApiProperty({ description: '사용자 프로필 수정일' })
-    updatedAt: Date
-
-    static of(user: User): UserDetailDto {
-        return {
-            ...UserDto.of(user),
-            phone: user.phone,
-            createdAt: user.createdAt,
-            updatedAt: user.updatedAt
-        }
-    }
-}
-
 export class UserUpdateDto {
     @IsOptional()
     @IsString()
     @Matches(/^[가-힣a-zA-Z0-9]{2,15}$/)
     @ApiProperty({ description: '사용자 닉네임' })
     nickname?: string
-}
-
-export class UserUpdateResponseDto {
-    @ApiProperty({ description: '상태 코드' })
-    code: 'updated' | 'unchanged' | 'nickname_duplicated'
-    profile?: UserDto
 }
